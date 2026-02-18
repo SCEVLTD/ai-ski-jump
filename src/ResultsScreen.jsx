@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BRAND, ROUNDS_PER_GAME } from './constants'
 
 const FONT = "'Open Sans','Segoe UI',system-ui,sans-serif"
@@ -52,6 +53,16 @@ export default function ResultsScreen({
   onShare,
   onChallenge,
 }) {
+  // Unlock body scroll so results can scroll on mobile
+  useEffect(() => {
+    document.body.style.overflow = 'auto'
+    document.body.style.position = 'static'
+    return () => {
+      document.body.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+    }
+  }, [])
+
   const shareText = generateShareText(scores, totalScore, grade)
   const beatChallenger = challengerScore != null && totalScore > challengerScore
 
