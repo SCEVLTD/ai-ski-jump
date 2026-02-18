@@ -149,14 +149,14 @@ export default function Tutorial({ onDismiss, gameScale }) {
             <div style={{
               position: 'absolute',
               top: Math.max(40 * scale, lipY - highlightRadius - 120 * scale),
-              left: 0,
-              right: 0,
+              left: 12,
+              right: 12,
               textAlign: 'center',
               animation: 'tutorialFadeUp 0.4s ease-out both',
               pointerEvents: 'none',
             }}>
               <div style={{
-                fontSize: `${Math.max(20, 22 * scale)}px`,
+                fontSize: `${Math.max(18, 20 * scale)}px`,
                 fontWeight: 800,
                 color: BRAND.white,
                 marginBottom: 8 * scale,
@@ -194,14 +194,14 @@ export default function Tutorial({ onDismiss, gameScale }) {
             <div style={{
               position: 'absolute',
               top: 60 * scale,
-              left: 0,
-              right: 0,
+              left: 12,
+              right: 12,
               textAlign: 'center',
               animation: 'tutorialFadeUp 0.4s ease-out both',
               pointerEvents: 'none',
             }}>
               <div style={{
-                fontSize: `${Math.max(20, 22 * scale)}px`,
+                fontSize: `${Math.max(18, 20 * scale)}px`,
                 fontWeight: 800,
                 color: BRAND.white,
                 marginBottom: 8 * scale,

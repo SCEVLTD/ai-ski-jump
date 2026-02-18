@@ -448,9 +448,12 @@ export default function AISkiJumpGame() {
 
       vibrate(grade === 'crash' ? [50, 30, 50] : [20])
 
-      // Calculate score
+      // Calculate score — use current position (state.x), not state.distance
+      // which is only set when physics detects ground collision
       const state = flightStateRef.current
-      const rawDist = state ? state.distance : 0
+      const rawDist = state
+        ? Math.max(0, (state.x - RAMP_LIP.x) / 1.265)
+        : 0
       const result = calculateScore(rawDist, multiplier)
 
       // Store round result
