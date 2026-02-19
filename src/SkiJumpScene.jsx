@@ -148,11 +148,18 @@ export default function SkiJumpScene({ children }) {
             <stop offset="100%" stopColor="#111827" />
           </linearGradient>
 
-          {/* Landing hill snow gradient */}
-          <linearGradient id="hillSnowGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#E8EDF2" />
-            <stop offset="40%" stopColor="#D1D9E6" />
-            <stop offset="100%" stopColor="#B8C4D4" />
+          {/* Landing hill snow gradient — bright surface to compressed blue-grey */}
+          <linearGradient id="hillSnowGrad" x1="0" y1="0" x2="0.3" y2="1">
+            <stop offset="0%" stopColor="#F0F4F8" />
+            <stop offset="25%" stopColor="#E2E8F0" />
+            <stop offset="55%" stopColor="#B8C4D0" />
+            <stop offset="100%" stopColor="#8B9EB0" />
+          </linearGradient>
+
+          {/* Hill side face gradient — darker compressed snow */}
+          <linearGradient id="hillSideGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#9AACBC" />
+            <stop offset="100%" stopColor="#6B7F94" />
           </linearGradient>
 
           {/* Ramp surface gradient */}
@@ -254,12 +261,12 @@ export default function SkiJumpScene({ children }) {
           const cp2x = lipX - 40
           const cp2y = lipY - 60
 
-          // Lip curve: small upward kick at the end
-          const lipKickX = lipX + 8
-          const lipKickY = lipY - 6
+          // Lip end: gentle flattening at the takeoff table (NOT an upward kick)
+          const lipEndX = lipX + 6
+          const lipEndY = lipY - 1 // barely perceptible rise — smooth transition
 
           // Surface path (top edge of ramp)
-          const surfacePath = `M ${topX},${topY} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${lipX},${lipY} L ${lipKickX},${lipKickY}`
+          const surfacePath = `M ${topX},${topY} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${lipX},${lipY} Q ${lipX + 3},${lipY - 0.5} ${lipEndX},${lipEndY}`
 
           // Side face (darker, gives 3D depth)
           const sidePath = `M ${topX + rampWidth},${topY + 4} C ${cp1x + rampWidth},${cp1y + 4} ${cp2x + rampWidth},${cp2y + 4} ${lipX + rampWidth},${lipY + 2} L ${lipX + rampWidth},${lipY + 18} L ${topX + rampWidth},${topY + 22} Z`
@@ -310,20 +317,20 @@ export default function SkiJumpScene({ children }) {
                 opacity="0.5"
               />
 
-              {/* Lip / takeoff table */}
+              {/* Lip / takeoff table — smooth, flat platform at ramp end */}
               <path
-                d={`M ${lipX - 2},${lipY + 2} Q ${lipX + 4},${lipY - 3} ${lipKickX + 2},${lipKickY - 2} L ${lipKickX + rampWidth + 2},${lipKickY} Q ${lipX + rampWidth + 4},${lipY - 1} ${lipX + rampWidth - 2},${lipY + 4} Z`}
+                d={`M ${lipX - 2},${lipY + 2} Q ${lipX + 2},${lipY} ${lipEndX},${lipEndY} L ${lipEndX + rampWidth},${lipEndY + 1} Q ${lipX + rampWidth + 2},${lipY + 1} ${lipX + rampWidth - 2},${lipY + 4} Z`}
                 fill="#475569"
                 stroke="#E2E8F0"
                 strokeWidth="1"
               />
-              {/* Lip highlight (bright edge to make it visually distinct) */}
+              {/* Lip highlight (bright edge — subtle, not a big kick) */}
               <path
-                d={`M ${lipX},${lipY} Q ${lipX + 5},${lipY - 5} ${lipKickX + 2},${lipKickY - 2}`}
+                d={`M ${lipX},${lipY} Q ${lipX + 3},${lipY - 0.5} ${lipEndX},${lipEndY}`}
                 fill="none"
                 stroke={BRAND.white}
                 strokeWidth="2"
-                opacity="0.95"
+                opacity="0.85"
               />
             </g>
           )
@@ -333,63 +340,127 @@ export default function SkiJumpScene({ children }) {
         {/* LANDING HILL                                                  */}
         {/* ============================================================= */}
         {(() => {
-          // Hill polygon: from lip, sloping down, then wrapping around
-          // the bottom-right corner and back
           const lipX = RAMP_LIP.x
           const lipY = RAMP_LIP.y
           const endX = HILL_END_X
           const endY = RAMP_LIP.y + (endX - lipX) * LANDING_HILL_SLOPE
 
-          // Slight curve at the transition to outrun
-          const outrunTransX = endX - 30
-          const outrunTransY = RAMP_LIP.y + (outrunTransX - lipX) * LANDING_HILL_SLOPE
+          // Helper: y on the physics slope at a given x
+          const slopeY = (x) => lipY + (x - lipX) * LANDING_HILL_SLOPE
 
-          // Hill surface path with slight curve at start (transition from lip)
-          // and gentle curve into the outrun at the bottom
-          const hillPath = `
+          // --- Hill body: a proper curved slope shape ---
+          // The surface follows the physics line exactly.
+          // The underside curves outward to give the hill natural volume,
+          // then wraps around the bottom of the scene.
+          //
+          // Surface line: lip → endX along LANDING_HILL_SLOPE (linear match to physics)
+          // Underside: a bezier that bulges below the surface, giving the hill
+          // depth/volume like a real earth mound.
+
+          // How far below the surface the hill "belly" extends
+          const bulgeDepth = 65
+          // The underside curves from near the lip down-and-right
+          const underLipX = lipX - 6
+          const underLipY = lipY + 18
+          const underEndX = endX + 5
+          const underEndY = Math.min(endY + 35, GAME_H - 50)
+
+          // Bezier control points for the underside curve
+          const ucp1x = lipX + 30
+          const ucp1y = lipY + bulgeDepth
+          const ucp2x = endX - 80
+          const ucp2y = endY + bulgeDepth + 10
+
+          const hillBodyPath = `
             M ${lipX},${lipY}
-            Q ${lipX + 20},${lipY + 8} ${lipX + 40},${lipY + 40 * LANDING_HILL_SLOPE}
-            L ${outrunTransX},${outrunTransY}
-            Q ${endX - 10},${endY + 5} ${endX},${Math.min(endY + 15, GAME_H - 55)}
-            L ${endX},${GAME_H}
-            L ${lipX - 20},${GAME_H}
-            L ${lipX - 20},${lipY + 30}
+            L ${endX},${endY}
+            Q ${endX + 3},${endY + 8} ${underEndX},${underEndY}
+            C ${ucp2x},${ucp2y} ${ucp1x},${ucp1y} ${underLipX},${underLipY}
+            Q ${lipX - 8},${lipY + 8} ${lipX},${lipY}
             Z
           `
 
+          // --- Depth shadow: a thin darker path 3-4px below the surface ---
+          const shadowOffset = 4
+          const shadowPath = `
+            M ${lipX + 2},${lipY + shadowOffset}
+            L ${endX - 5},${slopeY(endX - 5) + shadowOffset}
+          `
+
+          // --- Snow texture lines parallel to the slope ---
+          const textureLine = (offset) => {
+            const startX = lipX + 15
+            const lineEndX = endX - 30 - offset * 8
+            return `M ${startX},${slopeY(startX) + offset} L ${lineEndX},${slopeY(lineEndX) + offset}`
+          }
+
+          // --- Snow sparkle dots scattered along the hill surface ---
+          const sparkles = []
+          let seed = 137
+          for (let i = 0; i < 20; i++) {
+            seed = (seed * 16807 + 17) % 2147483647
+            const t = (seed % 1000) / 1000 // 0-1 along the hill
+            const sx = lipX + 10 + t * (endX - lipX - 30)
+            seed = (seed * 16807 + 17) % 2147483647
+            const belowSurface = (seed % 100) / 100 * 25 // 0-25px below surface
+            const sy = slopeY(sx) + 2 + belowSurface
+            seed = (seed * 16807 + 17) % 2147483647
+            const sr = 0.5 + (seed % 100) / 100 * 1.0
+            seed = (seed * 16807 + 17) % 2147483647
+            const so = 0.08 + (seed % 100) / 100 * 0.07
+            sparkles.push({ x: sx, y: sy, r: sr, opacity: so })
+          }
+
           return (
             <g>
-              {/* Hill body */}
-              <path d={hillPath} fill="url(#hillSnowGrad)" />
+              {/* Hill body — curved slope with volume */}
+              <path d={hillBodyPath} fill="url(#hillSnowGrad)" />
 
-              {/* Hill surface line (the actual slope the jumper lands on) */}
+              {/* Lip-to-hill smooth transition curve (blends ramp into hill surface) */}
+              <path
+                d={`M ${lipX - 4},${lipY - 2} Q ${lipX + 3},${lipY + 1} ${lipX + 12},${slopeY(lipX + 12)}`}
+                fill="none"
+                stroke="#E8ECF0"
+                strokeWidth="2.5"
+                opacity="0.6"
+              />
+
+              {/* Hill surface line — exact match to physics getHillY() */}
               <line
                 x1={lipX}
                 y1={lipY}
-                x2={endX - 20}
-                y2={RAMP_LIP.y + (endX - 20 - lipX) * LANDING_HILL_SLOPE}
+                x2={endX - 10}
+                y2={slopeY(endX - 10)}
                 stroke="#F1F5F9"
                 strokeWidth="2"
-                opacity="0.8"
+                opacity="0.85"
               />
 
-              {/* Secondary surface texture lines */}
-              <line
-                x1={lipX + 5}
-                y1={lipY + 10}
-                x2={endX - 30}
-                y2={RAMP_LIP.y + (endX - 30 - lipX) * LANDING_HILL_SLOPE + 10}
-                stroke="#E2E8F0"
-                strokeWidth="0.5"
-                opacity="0.4"
+              {/* Depth shadow below the surface line */}
+              <path
+                d={shadowPath}
+                fill="none"
+                stroke="#8B9EB0"
+                strokeWidth="1.5"
+                opacity="0.35"
               />
-              <line
-                x1={lipX + 5}
-                y1={lipY + 20}
-                x2={endX - 40}
-                y2={RAMP_LIP.y + (endX - 40 - lipX) * LANDING_HILL_SLOPE + 20}
-                stroke="#E2E8F0"
-                strokeWidth="0.5"
+
+              {/* Secondary snow texture lines */}
+              <path d={textureLine(10)} fill="none" stroke="#D6DEE8" strokeWidth="0.5" opacity="0.35" />
+              <path d={textureLine(20)} fill="none" stroke="#CDD5DF" strokeWidth="0.5" opacity="0.25" />
+              <path d={textureLine(32)} fill="none" stroke="#C4CCD6" strokeWidth="0.4" opacity="0.2" />
+
+              {/* Snow sparkle dots */}
+              {sparkles.map((s, i) => (
+                <circle key={`hspk-${i}`} cx={s.x} cy={s.y} r={s.r} fill={BRAND.white} opacity={s.opacity} />
+              ))}
+
+              {/* Underside edge highlight — subtle rim light on the belly curve */}
+              <path
+                d={`M ${underLipX},${underLipY} C ${ucp1x},${ucp1y} ${ucp2x},${ucp2y} ${underEndX},${underEndY}`}
+                fill="none"
+                stroke="#6B7F94"
+                strokeWidth="1"
                 opacity="0.3"
               />
             </g>

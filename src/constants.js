@@ -56,9 +56,9 @@ export const MAX_DISTANCE = 170 // theoretical max in metres
 // Timing windows (milliseconds from optimal moment)
 // ---------------------------------------------------------------------------
 export const TIMING = {
-  perfect: 50, // +/-50ms
-  good: 150, // +/-150ms
-  ok: 300, // +/-300ms
+  perfect: 80, // +/-80ms
+  good: 200, // +/-200ms
+  ok: 400, // +/-400ms
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ export const LANDING_MULT = {
   telemark: 1.5, // perfect landing
   clean: 1.2, // good landing
   shaky: 1.0, // ok landing
-  crash: 0.7, // missed/late
+  crash: 0.8, // missed/late
 }
 
 // ---------------------------------------------------------------------------
@@ -196,4 +196,4 @@ export const WIND_RANGE = { min: -2.0, max: 2.0 } // m/s
 export const APPROACH_DURATION = 1500 // jumper slides down ramp
 export const ROUND_INTRO_DURATION = 1500 // "Round 3/5" display
 export const SCORE_DISPLAY_DURATION = 2000 // show score after landing
-export const AUTO_LAUNCH_DELAY = 500 // auto-launch if player doesn't tap
+export const AUTO_LAUNCH_DELAY = 700 // auto-launch if player doesn't tap

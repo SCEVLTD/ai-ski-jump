@@ -163,7 +163,8 @@ export default function LaunchTimer({ active, onLaunch, gameScale }) {
       let grade = forceGrade
       if (!grade && startTimeRef.current) {
         const elapsed = performance.now() - startTimeRef.current
-        const timingError = Math.abs(elapsed - APPROACH_DURATION)
+        // Shift optimal 25ms earlier so slightly-early taps are rewarded
+        const timingError = Math.abs(elapsed - (APPROACH_DURATION - 25))
         grade = gradeFromError(timingError)
       }
       if (!grade) grade = 'miss'
@@ -260,13 +261,12 @@ export default function LaunchTimer({ active, onLaunch, gameScale }) {
             position: 'absolute',
             left: centreX,
             top: centreY - 55 * scale,
-            transform: 'translate(-50%, -50%)',
+            transform: 'translate(-50%, -50%) scale(1)',
             color: BRAND.white,
             fontSize: 16 * scale,
             fontFamily: "'Open Sans', sans-serif",
             fontWeight: 700,
-            opacity: 0.7,
-            animation: 'fadeUp 0.35s ease-out',
+            animation: 'countdownPulse 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards',
             textShadow: '0 2px 8px rgba(0,0,0,0.6)',
           }}
         >

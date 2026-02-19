@@ -163,7 +163,8 @@ export default function LandingTimer({
             ? CRASH_GRADE
             : gradeFromError(0) // shouldn't happen, but fallback
       } else {
-        const error = Math.abs(fp - OPTIMAL_PROGRESS)
+        // Shift optimal 0.02 earlier so slightly-early taps are rewarded
+        const error = Math.abs(fp - (OPTIMAL_PROGRESS - 0.02))
         result = gradeFromError(error)
       }
 

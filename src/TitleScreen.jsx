@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
-import { BRAND } from './constants'
+import { BRAND, GAME_W, GAME_H } from './constants'
+import SkiJumpScene from './SkiJumpScene'
 
 const FONT = "'Open Sans','Segoe UI',system-ui,sans-serif"
 
-// Generate snowflakes once (static array)
-const SNOWFLAKES = Array.from({ length: 15 }, (_, i) => ({
+// Generate snowflakes once (static array) — denser, varied
+const SNOWFLAKES = Array.from({ length: 28 }, (_, i) => ({
   id: i,
   left: `${Math.random() * 100}%`,
-  size: 2 + Math.random() * 2,
-  duration: 8 + Math.random() * 7,
-  delay: Math.random() * 10,
-  opacity: 0.3 + Math.random() * 0.3,
+  size: 2 + Math.random() * 4, // 2px to 6px
+  duration: 6 + Math.random() * 8,
+  delay: Math.random() * 12,
+  opacity: 0.15 + Math.random() * 0.55,
 }))
 
 export default function TitleScreen({ onStart, bestScore, streak, challengerName, challengerScore }) {
@@ -41,7 +42,7 @@ export default function TitleScreen({ onStart, bestScore, streak, challengerName
     <div style={{
       width: '100%',
       minHeight: '100vh',
-      background: `linear-gradient(160deg, ${BRAND.dark} 0%, #0f1a2e 50%, ${BRAND.darkMid} 100%)`,
+      background: BRAND.dark,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -53,17 +54,78 @@ export default function TitleScreen({ onStart, bestScore, streak, challengerName
       padding: '24px',
       boxSizing: 'border-box',
     }}>
-      {/* Subtle grid overlay */}
+      {/* ============================================================= */}
+      {/* BACKGROUND: SkiJumpScene rendered dimmed                       */}
+      {/* ============================================================= */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        opacity: 0.03,
-        backgroundImage: `linear-gradient(${BRAND.blue} 1px, transparent 1px), linear-gradient(90deg, ${BRAND.blue} 1px, transparent 1px)`,
-        backgroundSize: '40px 40px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0.3,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          width: GAME_W,
+          height: GAME_H,
+          transform: 'scale(2.2)',
+          transformOrigin: 'center center',
+          filter: 'blur(1.5px)',
+        }}>
+          <SkiJumpScene>{null}</SkiJumpScene>
+        </div>
+      </div>
+
+      {/* Dark overlay gradient on top of scene for readability */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `radial-gradient(ellipse 80% 60% at 50% 30%, transparent 0%, ${BRAND.dark}dd 70%), linear-gradient(180deg, ${BRAND.dark}66 0%, ${BRAND.dark}ee 100%)`,
         pointerEvents: 'none',
       }} />
 
-      {/* Snowfall */}
+      {/* ============================================================= */}
+      {/* FLOODLIGHT GLOW EFFECTS                                       */}
+      {/* ============================================================= */}
+      <div className="title-floodlight" style={{
+        position: 'absolute',
+        top: '5%',
+        left: '20%',
+        width: '200px',
+        height: '200px',
+        borderRadius: '50%',
+        background: `radial-gradient(circle, ${BRAND.blue}22 0%, ${BRAND.blue}08 40%, transparent 70%)`,
+        pointerEvents: 'none',
+        animation: 'floodlightPulse 4s ease-in-out infinite',
+      }} />
+      <div className="title-floodlight" style={{
+        position: 'absolute',
+        top: '10%',
+        right: '15%',
+        width: '160px',
+        height: '160px',
+        borderRadius: '50%',
+        background: `radial-gradient(circle, #FCD34D18 0%, #FCD34D06 40%, transparent 70%)`,
+        pointerEvents: 'none',
+        animation: 'floodlightPulse 5s ease-in-out 1s infinite',
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: '0',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '400px',
+        height: '300px',
+        borderRadius: '50%',
+        background: `radial-gradient(ellipse, ${BRAND.purple}12 0%, transparent 60%)`,
+        pointerEvents: 'none',
+      }} />
+
+      {/* ============================================================= */}
+      {/* SNOWFALL                                                       */}
+      {/* ============================================================= */}
       {SNOWFLAKES.map((s) => (
         <div key={s.id} style={{
           position: 'absolute',
@@ -76,18 +138,21 @@ export default function TitleScreen({ onStart, bestScore, streak, challengerName
           opacity: s.opacity,
           animation: `snowfall ${s.duration}s linear ${s.delay}s infinite`,
           pointerEvents: 'none',
+          zIndex: 2,
         }} />
       ))}
 
-      {/* Content container */}
+      {/* ============================================================= */}
+      {/* CONTENT CONTAINER                                              */}
+      {/* ============================================================= */}
       <div style={{
-        maxWidth: '440px',
+        maxWidth: '480px',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         position: 'relative',
-        zIndex: 1,
+        zIndex: 3,
       }}>
         {/* BrandedAI mark */}
         <div style={{
@@ -97,38 +162,40 @@ export default function TitleScreen({ onStart, bestScore, streak, challengerName
           letterSpacing: '2px',
           textTransform: 'uppercase',
           animation: 'fadeUp 0.6s ease-out',
-          marginBottom: '24px',
+          marginBottom: '20px',
         }}>
           BRANDEDAI
         </div>
 
-        {/* Title */}
+        {/* Title — larger, bolder, more vibrant gradient */}
         <h1 style={{
-          fontSize: 'clamp(28px, 7vw, 48px)',
-          fontWeight: 800,
+          fontSize: 'clamp(2.5rem, 8vw, 4rem)',
+          fontWeight: 900,
           textAlign: 'center',
           margin: '0 0 2px',
-          background: `linear-gradient(135deg, ${BRAND.blue}, ${BRAND.purple})`,
+          background: `linear-gradient(135deg, #60A5FA, ${BRAND.blue}, ${BRAND.purple}, #A78BFA)`,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
           textShadow: 'none',
-          filter: `drop-shadow(0 2px 12px ${BRAND.blue}44)`,
+          filter: `drop-shadow(0 4px 20px ${BRAND.blue}66)`,
           animation: 'fadeUp 0.6s ease-out 0.1s both',
-          letterSpacing: '2px',
+          letterSpacing: '3px',
           lineHeight: 1.1,
+          textTransform: 'uppercase',
         }}>
           AI Ski Jump
         </h1>
         <h2 style={{
-          fontSize: 'clamp(20px, 5vw, 32px)',
-          fontWeight: 700,
+          fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
+          fontWeight: 800,
           textAlign: 'center',
           margin: '0 0 16px',
           color: BRAND.white,
-          textShadow: `0 0 20px ${BRAND.blue}33`,
+          textShadow: `0 0 30px ${BRAND.blue}44, 0 0 60px ${BRAND.purple}22`,
           animation: 'fadeUp 0.6s ease-out 0.15s both',
-          letterSpacing: '3px',
+          letterSpacing: '4px',
+          textTransform: 'uppercase',
         }}>
           Championship
         </h2>
@@ -144,38 +211,43 @@ export default function TitleScreen({ onStart, bestScore, streak, challengerName
           fontWeight: 600,
           color: BRAND.blueLight,
           letterSpacing: '1px',
-          marginBottom: '20px',
+          marginBottom: '24px',
         }}>
           Winter Olympics 2026 Edition
         </div>
 
-        {/* Ski jumper SVG */}
+        {/* Ski jumper SVG — 2x larger centrepiece */}
         <div style={{
           animation: 'float 3s ease-in-out infinite, fadeUp 0.6s ease-out 0.25s both',
-          marginBottom: '16px',
-          filter: `drop-shadow(0 4px 20px ${BRAND.blue}44)`,
+          marginBottom: '20px',
+          filter: `drop-shadow(0 6px 30px ${BRAND.blue}55)`,
         }}>
-          <svg width="80" height="60" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="160" height="120" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Glow halo behind jumper */}
+            <ellipse cx="80" cy="60" rx="70" ry="40" fill={`${BRAND.blue}10`} />
             {/* Head */}
-            <circle cx="18" cy="14" r="6" fill={BRAND.blueLight} />
+            <circle cx="36" cy="28" r="10" fill={BRAND.blueLight} />
+            {/* Helmet visor */}
+            <path d="M30 26 Q36 22 42 26" stroke={BRAND.blue} strokeWidth="2" fill="none" opacity="0.6" />
             {/* Body — leaning forward in flight */}
-            <line x1="22" y1="16" x2="50" y2="26" stroke={BRAND.blueLight} strokeWidth="3" strokeLinecap="round" />
+            <line x1="44" y1="32" x2="100" y2="52" stroke={BRAND.blueLight} strokeWidth="5" strokeLinecap="round" />
             {/* Front arm — forward */}
-            <line x1="32" y1="20" x2="24" y2="10" stroke={BRAND.blueLight} strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="64" y1="40" x2="48" y2="20" stroke={BRAND.blueLight} strokeWidth="4" strokeLinecap="round" />
             {/* Back arm — along body */}
-            <line x1="38" y1="22" x2="48" y2="16" stroke={BRAND.blueLight} strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="76" y1="44" x2="96" y2="32" stroke={BRAND.blueLight} strokeWidth="4" strokeLinecap="round" />
             {/* Front leg — V-style */}
-            <line x1="50" y1="26" x2="68" y2="38" stroke={BRAND.blueLight} strokeWidth="3" strokeLinecap="round" />
+            <line x1="100" y1="52" x2="136" y2="76" stroke={BRAND.blueLight} strokeWidth="5" strokeLinecap="round" />
             {/* Back leg — V-style */}
-            <line x1="50" y1="26" x2="66" y2="44" stroke={BRAND.blueLight} strokeWidth="3" strokeLinecap="round" />
+            <line x1="100" y1="52" x2="132" y2="88" stroke={BRAND.blueLight} strokeWidth="5" strokeLinecap="round" />
             {/* Front ski */}
-            <line x1="64" y1="36" x2="78" y2="34" stroke={BRAND.white} strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="128" y1="72" x2="156" y2="68" stroke={BRAND.white} strokeWidth="4" strokeLinecap="round" />
             {/* Back ski */}
-            <line x1="62" y1="42" x2="76" y2="46" stroke={BRAND.white} strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="124" y1="84" x2="152" y2="92" stroke={BRAND.white} strokeWidth="4" strokeLinecap="round" />
             {/* Wind lines */}
-            <line x1="2" y1="20" x2="12" y2="18" stroke={BRAND.blue} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-            <line x1="4" y1="28" x2="14" y2="26" stroke={BRAND.blue} strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
-            <line x1="6" y1="36" x2="16" y2="34" stroke={BRAND.blue} strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
+            <line x1="2" y1="38" x2="22" y2="34" stroke={BRAND.blue} strokeWidth="2.5" strokeLinecap="round" opacity="0.5" />
+            <line x1="6" y1="54" x2="26" y2="50" stroke={BRAND.blue} strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
+            <line x1="10" y1="70" x2="30" y2="66" stroke={BRAND.blue} strokeWidth="2.5" strokeLinecap="round" opacity="0.3" />
+            <line x1="0" y1="46" x2="16" y2="43" stroke={BRAND.purple} strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
           </svg>
         </div>
 
@@ -256,31 +328,33 @@ export default function TitleScreen({ onStart, bestScore, streak, challengerName
           </div>
         )}
 
-        {/* Start button */}
+        {/* Start button — stronger pulse */}
         <button
           onClick={onStart}
+          className="title-start-btn"
           style={{
-            animation: 'fadeUp 0.6s ease-out 0.55s both, pulse 2.5s ease-in-out 1.3s infinite',
-            background: `linear-gradient(135deg, ${BRAND.blue}, ${BRAND.blueDark})`,
+            animation: 'fadeUp 0.6s ease-out 0.55s both',
+            background: `linear-gradient(135deg, ${BRAND.blue}, ${BRAND.purple})`,
             border: 'none',
-            borderRadius: '12px',
-            padding: '16px 48px',
-            fontSize: '18px',
-            fontWeight: 800,
+            borderRadius: '14px',
+            padding: '18px 56px',
+            fontSize: '20px',
+            fontWeight: 900,
             color: BRAND.white,
             cursor: 'pointer',
-            letterSpacing: '2px',
+            letterSpacing: '3px',
             textTransform: 'uppercase',
-            boxShadow: `0 4px 30px ${BRAND.blue}55, 0 1px 0 inset rgba(255,255,255,0.15)`,
+            boxShadow: `0 0 20px ${BRAND.blue}66, 0 0 40px ${BRAND.purple}33, 0 4px 30px ${BRAND.blue}55, 0 1px 0 inset rgba(255,255,255,0.15)`,
             fontFamily: FONT,
             marginTop: '8px',
             marginBottom: '12px',
+            position: 'relative',
           }}
         >
           START JUMPING
         </button>
 
-        {/* Desktop hint */}
+        {/* Desktop hint — only on desktop */}
         {isDesktop && (
           <div style={{
             animation: 'fadeUp 0.6s ease-out 0.65s both',

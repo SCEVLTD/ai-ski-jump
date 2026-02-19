@@ -164,6 +164,69 @@ export default function AISkiJumpGame() {
   const lastTimeRef = useRef(0)
   const approachStartRef = useRef(0)
   const flightTotalTimeEstRef = useRef(3) // estimated total flight time in seconds
+  const jumperBodyRef = useRef(null)
+  const telemarkVRef = useRef(null)
+  const [landingGrade, setLandingGrade] = useState(null)
+  const gameContainerRef = useRef(null)
+
+  // ---- Snow burst particles on landing ----
+  const spawnSnowBurst = useCallback((landX, landY, grade) => {
+    const container = gameContainerRef.current
+    if (!container) return
+
+    const count = grade === 'telemark' ? 8 : grade === 'clean' ? 12 : grade === 'shaky' ? 16 : 22
+    const spread = grade === 'telemark' ? 40 : grade === 'clean' ? 60 : grade === 'shaky' ? 80 : 120
+
+    for (let i = 0; i < count; i++) {
+      const particle = document.createElement('div')
+      const size = (4 + Math.random() * 4) * scale
+      const angle = Math.random() * Math.PI * 2
+      const speed = (0.3 + Math.random() * 0.7) * spread
+      const dx = Math.cos(angle) * speed
+      const dy = Math.sin(angle) * speed - Math.abs(Math.sin(angle)) * spread * 0.3
+
+      particle.style.cssText = `
+        position:absolute;
+        left:${landX * scale}px;
+        top:${landY * scale}px;
+        width:${size}px;
+        height:${size}px;
+        border-radius:50%;
+        background:white;
+        opacity:0.9;
+        pointer-events:none;
+        z-index:10;
+        transition:all 500ms cubic-bezier(0.25,0.46,0.45,0.94);
+      `
+      container.appendChild(particle)
+
+      requestAnimationFrame(() => {
+        particle.style.transform = `translate(${dx}px, ${dy}px)`
+        particle.style.opacity = '0'
+      })
+
+      setTimeout(() => {
+        if (particle.parentNode) particle.parentNode.removeChild(particle)
+      }, 550)
+    }
+  }, [scale])
+
+  // ---- Camera shake on landing ----
+  const applyCameraShake = useCallback((grade) => {
+    const container = gameContainerRef.current
+    if (!container) return
+    if (grade === 'telemark') return // smooth landing, no shake
+
+    const anim = grade === 'clean' ? 'shakeLight' : grade === 'shaky' ? 'shakeMedium' : 'shakeHeavy'
+    const dur = grade === 'clean' ? '50ms' : grade === 'shaky' ? '200ms' : '400ms'
+
+    container.style.animation = `${anim} ${dur} ease-out`
+    const cleanup = () => {
+      container.style.animation = ''
+      container.removeEventListener('animationend', cleanup)
+    }
+    container.addEventListener('animationend', cleanup)
+  }, [])
 
   // ---- On mount: read localStorage + parse challenge params ----
   useEffect(() => {
@@ -276,6 +339,14 @@ export default function AISkiJumpGame() {
 
     playSound('whoosh')
     approachStartRef.current = performance.now()
+    let lastSpeedLineTime = 0
+
+    // Reset body pose from any previous round's crash/flight animation
+    if (jumperBodyRef.current) {
+      jumperBodyRef.current.style.animation = ''
+      jumperBodyRef.current.style.transition = 'transform 0.15s ease-out'
+      jumperBodyRef.current.style.transform = 'scaleY(0.7) scaleX(1.1)'
+    }
 
     function tick() {
       const elapsed = performance.now() - approachStartRef.current
@@ -286,8 +357,44 @@ export default function AISkiJumpGame() {
         jumperRef.current.style.transform =
           `translate(${pos.x * scale}px, ${pos.y * scale}px) rotate(${38}deg)`
       }
+      // Crouch pose during approach
+      if (jumperBodyRef.current) {
+        jumperBodyRef.current.style.transform = 'scaleY(0.7) scaleX(1.1)'
+      }
 
-      if (elapsed < APPROACH_DURATION + 500) {
+      // Speed lines: spawn batch every 100ms behind the jumper
+      if (elapsed - lastSpeedLineTime > 100 && elapsed < APPROACH_DURATION && trailRef.current) {
+        lastSpeedLineTime = elapsed
+        const lineCount = 3 + Math.floor(Math.random() * 3) // 3-5 lines
+        for (let i = 0; i < lineCount; i++) {
+          const line = document.createElement('div')
+          // Offset behind jumper (up-left along ramp at 38deg)
+          const offsetBack = 10 + Math.random() * 25
+          const spread = (Math.random() - 0.5) * 16
+          const lx = (pos.x - offsetBack * Math.cos(38 * Math.PI / 180) + spread * Math.sin(38 * Math.PI / 180)) * scale
+          const ly = (pos.y - offsetBack * Math.sin(38 * Math.PI / 180) - spread * Math.cos(38 * Math.PI / 180)) * scale
+          const w = (20 + Math.random() * 20) * scale
+          line.style.cssText = `
+            position:absolute;
+            left:${lx}px;
+            top:${ly}px;
+            width:${w}px;
+            height:${2 * scale}px;
+            background:white;
+            opacity:0.3;
+            pointer-events:none;
+            border-radius:1px;
+            transform:rotate(38deg);
+            animation:speedLine 300ms linear forwards;
+          `
+          trailRef.current.appendChild(line)
+          setTimeout(() => {
+            if (line.parentNode) line.parentNode.removeChild(line)
+          }, 350)
+        }
+      }
+
+      if (elapsed < APPROACH_DURATION + 700) {
         // Keep running slightly past approach end for auto-launch
         animFrameRef.current = requestAnimationFrame(tick)
       }
@@ -310,6 +417,46 @@ export default function AISkiJumpGame() {
 
       playSound('launch')
       vibrate([30])
+
+      // Launch burst: radial lines from the lip
+      if (trailRef.current) {
+        const burstCount = 10
+        const cx = RAMP_LIP.x * scale
+        const cy = RAMP_LIP.y * scale
+        for (let i = 0; i < burstCount; i++) {
+          const angle = (i / burstCount) * 360
+          const burst = document.createElement('div')
+          burst.style.cssText = `
+            position:absolute;
+            left:${cx}px;
+            top:${cy}px;
+            width:${15 * scale}px;
+            height:${2 * scale}px;
+            background:white;
+            pointer-events:none;
+            border-radius:1px;
+            transform-origin:0 50%;
+            --burst-angle:${angle}deg;
+            animation:launchBurst 200ms ease-out forwards;
+          `
+          trailRef.current.appendChild(burst)
+          setTimeout(() => {
+            if (burst.parentNode) burst.parentNode.removeChild(burst)
+          }, 250)
+        }
+      }
+
+      // Spring effect: snap from crouch to full size before flight elongation
+      if (jumperBodyRef.current) {
+        jumperBodyRef.current.style.transition = 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)'
+        jumperBodyRef.current.style.transform = 'scale(1.15)'
+        setTimeout(() => {
+          if (jumperBodyRef.current) {
+            jumperBodyRef.current.style.transition = 'transform 0.2s ease-out'
+            jumperBodyRef.current.style.transform = 'scaleX(1.3) scaleY(0.8)'
+          }
+        }, 100)
+      }
 
       // Calculate launch velocity
       const vel = calculateLaunchVelocity(grade, currentWind)
@@ -368,6 +515,10 @@ export default function AISkiJumpGame() {
         jumperRef.current.style.transform =
           `translate(${state.x * scale}px, ${state.y * scale}px) rotate(${angle}deg)`
       }
+      // Maintain flight elongation pose
+      if (jumperBodyRef.current) {
+        jumperBodyRef.current.style.transform = 'scaleX(1.3) scaleY(0.8)'
+      }
 
       // Trail dots: every 3rd frame
       frameCountRef.current++
@@ -377,13 +528,14 @@ export default function AISkiJumpGame() {
           position:absolute;
           left:${state.x * scale}px;
           top:${state.y * scale}px;
-          width:${4 * scale}px;
-          height:${4 * scale}px;
+          width:${6 * scale}px;
+          height:${6 * scale}px;
           border-radius:50%;
           background:${BRAND.white};
           opacity:0.4;
           pointer-events:none;
           transition:opacity 1s ease;
+          box-shadow:0 0 ${4 * scale}px rgba(255,255,255,0.3);
         `
         trailRef.current.appendChild(dot)
         // Fade out after a frame
@@ -448,6 +600,30 @@ export default function AISkiJumpGame() {
 
       vibrate(grade === 'crash' ? [50, 30, 50] : [20])
 
+      // Set landing grade for visual effects
+      setLandingGrade(grade)
+
+      // Reset body transform, then apply landing-specific effect
+      if (jumperBodyRef.current) {
+        jumperBodyRef.current.style.transition = 'none'
+        if (grade === 'crash') {
+          jumperBodyRef.current.style.animation = 'crashTumble 0.4s ease-out forwards'
+        } else {
+          jumperBodyRef.current.style.transform = 'scale(1)'
+          jumperBodyRef.current.style.transition = 'transform 0.15s ease-out'
+        }
+      }
+
+      // Show telemark V for perfect/clean landings
+      if ((grade === 'telemark' || grade === 'clean') && telemarkVRef.current) {
+        telemarkVRef.current.style.opacity = '1'
+        setTimeout(() => {
+          if (telemarkVRef.current) {
+            telemarkVRef.current.style.opacity = '0'
+          }
+        }, 500)
+      }
+
       // Calculate score — use current position (state.x), not state.distance
       // which is only set when physics detects ground collision
       const state = flightStateRef.current
@@ -455,6 +631,14 @@ export default function AISkiJumpGame() {
         ? Math.max(0, (state.x - RAMP_LIP.x) / 1.265)
         : 0
       const result = calculateScore(rawDist, multiplier)
+
+      // Snow burst at landing position
+      if (state) {
+        spawnSnowBurst(state.x, state.y, grade)
+      }
+
+      // Camera shake based on landing quality
+      applyCameraShake(grade)
 
       // Store round result
       const roundResult = {
@@ -471,15 +655,15 @@ export default function AISkiJumpGame() {
       setScores((prev) => [...prev, roundResult])
       setLiveDistance(result.finalDistance)
 
-      // Transition to LANDING briefly, then SCORE_DISPLAY
+      // Impact freeze frame (50ms pause) then transition to LANDING
       setScreen('LANDING')
 
       setTimeout(() => {
         playSound('tick')
         setScreen('SCORE_DISPLAY')
-      }, 500)
+      }, 550)
     },
-    [currentRound, currentWind],
+    [currentRound, currentWind, spawnSnowBurst, applyCameraShake],
   )
 
   // ---- SCORE_DISPLAY → next round or RESULTS ----
@@ -758,7 +942,7 @@ export default function AISkiJumpGame() {
       {/* ================================================================= */}
       {/* GAME CONTAINER — scaled game area                                 */}
       {/* ================================================================= */}
-      <div style={containerStyle} data-game-container>
+      <div ref={gameContainerRef} style={containerStyle} data-game-container>
         <SkiJumpScene>
           {/* ---- JUMPER ---- */}
           {(screen === 'APPROACH' ||
@@ -770,23 +954,66 @@ export default function AISkiJumpGame() {
                 position: 'absolute',
                 left: 0,
                 top: 0,
-                width: 28 * scale,
-                height: 28 * scale,
-                borderRadius: '50%',
-                background: jumper.color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 16 * scale,
-                lineHeight: 1,
+                width: 40 * scale,
+                height: 40 * scale,
                 zIndex: 5,
                 transform: `translate(${RAMP_TOP.x * scale}px, ${RAMP_TOP.y * scale}px)`,
                 transformOrigin: 'center center',
-                boxShadow: `0 2px 8px rgba(0,0,0,0.4)`,
                 pointerEvents: 'none',
               }}
             >
-              {jumper.emoji}
+              {/* Inner body div for pose transforms (crouch/flight/crash) */}
+              <div
+                ref={jumperBodyRef}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  background: jumper.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 22 * scale,
+                  lineHeight: 1,
+                  boxShadow: `0 2px 8px rgba(0,0,0,0.4), 0 0 12px ${jumper.color}4D`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.15s ease-out',
+                }}
+              >
+                {jumper.emoji}
+              </div>
+              {/* Telemark V indicator — shown on perfect/clean landings */}
+              <div
+                ref={telemarkVRef}
+                style={{
+                  position: 'absolute',
+                  top: -8 * scale,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  opacity: 0,
+                  transition: 'opacity 0.3s ease-out',
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  gap: 2 * scale,
+                }}
+              >
+                <div style={{
+                  width: 3 * scale,
+                  height: 14 * scale,
+                  background: BRAND.green,
+                  borderRadius: 2 * scale,
+                  transform: 'rotate(-20deg)',
+                  boxShadow: `0 0 6px ${BRAND.green}88`,
+                }} />
+                <div style={{
+                  width: 3 * scale,
+                  height: 14 * scale,
+                  background: BRAND.green,
+                  borderRadius: 2 * scale,
+                  transform: 'rotate(20deg)',
+                  boxShadow: `0 0 6px ${BRAND.green}88`,
+                }} />
+              </div>
             </div>
           )}
 
