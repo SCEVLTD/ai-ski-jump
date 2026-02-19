@@ -34,7 +34,6 @@ import {
   createFlightState,
   simulateFlight,
   calculateScore,
-  getHillY,
   PIXELS_PER_METRE,
 } from './physics'
 
@@ -556,25 +555,9 @@ export default function AISkiJumpGame() {
         scrollLayerRef.current.style.transform = `translateX(${-cameraXRef.current}px)`
       }
 
-      // Trail dots every 2nd frame — altitude-based colouring
-      // Blue (high/safe) → Orange (getting close) → Red (land now!)
+      // Trail dots every 2nd frame — thicker, brighter trail
       frameCountRef.current++
       if (frameCountRef.current % 2 === 0 && trailRef.current) {
-        const hillY = getHillY(state.x)
-        const altitude = hillY - state.y // positive = above hill
-        const altRatio = Math.max(0, Math.min(1, altitude / 120)) // 0=on hill, 1=high up
-        // Colour: red(low) → orange(mid) → blue(high)
-        let trailColor, trailGlow
-        if (altRatio > 0.5) {
-          trailColor = BRAND.blueLight
-          trailGlow = `0 0 6px ${BRAND.blue}88`
-        } else if (altRatio > 0.2) {
-          trailColor = BRAND.orange
-          trailGlow = `0 0 8px ${BRAND.orange}88`
-        } else {
-          trailColor = BRAND.red
-          trailGlow = `0 0 10px ${BRAND.red}aa`
-        }
         const dot = document.createElement('div')
         dot.style.cssText = `
           position:absolute;
@@ -583,11 +566,11 @@ export default function AISkiJumpGame() {
           width:8px;
           height:8px;
           border-radius:50%;
-          background:${trailColor};
+          background:${BRAND.white};
           opacity:0.7;
           pointer-events:none;
           transition:opacity 1.2s ease;
-          box-shadow:${trailGlow};
+          box-shadow:0 0 6px rgba(255,255,255,0.5);
         `
         trailRef.current.appendChild(dot)
         requestAnimationFrame(() => {
@@ -867,23 +850,23 @@ export default function AISkiJumpGame() {
         style={{
           width: '100%',
           maxWidth: GAME_W * scale,
-          height: Math.round(36 * Math.max(scale, 0.65)),
+          height: 36,
           background: 'rgba(17,24,39,0.9)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: `0 ${Math.round(12 * Math.max(scale, 0.65))}px`,
+          padding: '0 12px',
           boxSizing: 'border-box',
           zIndex: 100,
           flexShrink: 0,
         }}
       >
-        <div style={{ fontSize: Math.round(13 * Math.max(scale, 0.65)), fontWeight: 700, color: BRAND.white, letterSpacing: '0.5px' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: BRAND.white, letterSpacing: '0.5px' }}>
           Round {currentRound + 1}/{ROUNDS_PER_GAME}
         </div>
-        <div style={{ fontSize: Math.round(13 * Math.max(scale, 0.65)), fontWeight: 600, color: BRAND.grayLight, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: BRAND.grayLight, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span>{jumper.emoji}</span>
           <span>{jumper.name}</span>
         </div>
@@ -892,7 +875,7 @@ export default function AISkiJumpGame() {
           style={{
             background: 'none',
             border: 'none',
-            fontSize: Math.round(18 * Math.max(scale, 0.65)),
+            fontSize: 18,
             cursor: 'pointer',
             padding: '4px',
             lineHeight: 1,
@@ -930,10 +913,10 @@ export default function AISkiJumpGame() {
               <div
                 key={i}
                 style={{
-                  padding: `${Math.round(3 * Math.max(scale, 0.65))}px ${Math.round(10 * Math.max(scale, 0.65))}px`,
+                  padding: '3px 10px',
                   borderRadius: 12,
                   background: LANDING_BADGE_BG[s.landingGrade] || BRAND.gray,
-                  fontSize: Math.round(11 * Math.max(scale, 0.65)),
+                  fontSize: 11,
                   fontWeight: 700,
                   color: BRAND.white,
                   opacity: 0.85,
@@ -946,10 +929,10 @@ export default function AISkiJumpGame() {
             {/* Running best-3 total */}
             {scores.length >= 2 && (
               <div style={{
-                padding: `${Math.round(3 * Math.max(scale, 0.65))}px ${Math.round(10 * Math.max(scale, 0.65))}px`,
+                padding: '3px 10px',
                 borderRadius: 12,
                 background: 'rgba(255,255,255,0.1)',
-                fontSize: Math.round(11 * Math.max(scale, 0.65)),
+                fontSize: 11,
                 fontWeight: 800,
                 color: BRAND.blueLight,
                 letterSpacing: '0.3px',

@@ -294,42 +294,25 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
           fontSize: '13px',
           color: BRAND.gray,
           textAlign: 'center',
-          marginBottom: '16px',
+          marginBottom: '20px',
           lineHeight: 1.6,
         }}>
           5 jumps &bull; Best 3 count &bull; Tap to launch, tap to land
         </div>
 
-        {/* Best score + next goal — compact single line */}
-        {bestScore != null && bestScore > 0 ? (() => {
-          const nextTier = [...GRADE_TIERS].reverse().find(t => t.min > bestScore)
-          return (
-            <div style={{
-              animation: 'fadeUp 0.6s ease-out 0.45s both',
-              textAlign: 'center',
-              marginBottom: '16px',
-            }}>
-              <div style={{
-                fontSize: '15px',
-                fontWeight: 700,
-                color: BRAND.blueLight,
-                letterSpacing: '0.5px',
-                marginBottom: '4px',
-              }}>
-                Personal Best: {bestScore}m
-              </div>
-              {nextTier && (
-                <div style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: BRAND.gray,
-                }}>
-                  Next goal: {nextTier.emoji} {nextTier.label} ({nextTier.min}m+)
-                </div>
-              )}
-            </div>
-          )
-        })() : null}
+        {/* Best score */}
+        {bestScore != null && bestScore > 0 && (
+          <div style={{
+            animation: 'fadeUp 0.6s ease-out 0.45s both',
+            fontSize: '14px',
+            fontWeight: 700,
+            color: BRAND.blueLight,
+            letterSpacing: '0.5px',
+            marginBottom: '8px',
+          }}>
+            Personal Best: {bestScore}m
+          </div>
+        )}
 
         {/* Games played */}
         {gamesPlayed > 0 && (
@@ -343,6 +326,46 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
             Games played: {gamesPlayed}
           </div>
         )}
+
+        {/* Grade tier ladder — shows targets */}
+        <div style={{
+          animation: 'fadeUp 0.6s ease-out 0.52s both',
+          width: '100%',
+          maxWidth: '300px',
+          marginBottom: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '3px',
+        }}>
+          {GRADE_TIERS.slice(0, 5).map((tier, i) => {
+            const reached = bestScore != null && bestScore >= tier.min
+            return (
+              <div key={tier.label} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '3px 10px',
+                borderRadius: '6px',
+                background: reached ? `${BRAND.blue}18` : 'transparent',
+                opacity: reached ? 1 : 0.45,
+              }}>
+                <span style={{ fontSize: '14px', minWidth: '20px' }}>{tier.emoji}</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: reached ? 700 : 500,
+                  color: reached ? BRAND.white : BRAND.grayLight,
+                  flex: 1,
+                }}>{tier.label}</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: BRAND.gray,
+                  fontFamily: DISPLAY_FONT,
+                }}>{tier.min}m+</span>
+              </div>
+            )
+          })}
+        </div>
 
         {/* Start button — stronger pulse */}
         <button
@@ -381,47 +404,6 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
             Press SPACE to jump
           </div>
         )}
-
-        {/* Grade tier ladder — below CTA so button stays above fold */}
-        <div style={{
-          animation: 'fadeUp 0.6s ease-out 0.7s both',
-          width: '100%',
-          maxWidth: '300px',
-          marginTop: '16px',
-          marginBottom: '8px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '3px',
-        }}>
-          {GRADE_TIERS.slice(0, 5).map((tier) => {
-            const reached = bestScore != null && bestScore >= tier.min
-            return (
-              <div key={tier.label} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '3px 10px',
-                borderRadius: '6px',
-                background: reached ? `${BRAND.blue}18` : 'transparent',
-                opacity: reached ? 1 : 0.45,
-              }}>
-                <span style={{ fontSize: '14px', minWidth: '20px' }}>{tier.emoji}</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: reached ? 700 : 500,
-                  color: reached ? BRAND.white : BRAND.grayLight,
-                  flex: 1,
-                }}>{tier.label}</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: BRAND.gray,
-                  fontFamily: DISPLAY_FONT,
-                }}>{tier.min}m+</span>
-              </div>
-            )
-          })}
-        </div>
 
         {/* Footer */}
         <div style={{

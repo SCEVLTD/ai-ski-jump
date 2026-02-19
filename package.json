@@ -1,7 +1,7 @@
 {
   "name": "ai-ski-jump-championship",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "BrandedAI AI Ski Jump Championship - Interactive marketing game",
   "type": "module",
   "scripts": {
