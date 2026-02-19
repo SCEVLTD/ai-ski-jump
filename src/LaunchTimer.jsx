@@ -58,7 +58,7 @@ const TARGET_RADIUS = 32
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function LaunchTimer({ active, onLaunch, gameScale }) {
+export default function LaunchTimer({ active, onLaunch, gameScale, inputLockedUntilRef }) {
   // ---- State ----
   const [progress, setProgress] = useState(0) // 0 → 1 over APPROACH_DURATION
   const [countdown, setCountdown] = useState(null) // 3, 2, 1, or null
@@ -172,6 +172,9 @@ export default function LaunchTimer({ active, onLaunch, gameScale }) {
       // Prevent default for spacebar to avoid page scroll
       if (e.type === 'keydown' && e.code !== 'Space') return
       if (e.type === 'keydown') e.preventDefault()
+
+      // Respect input lockout from state transitions
+      if (inputLockedUntilRef && inputLockedUntilRef.current > performance.now()) return
 
       if (!launchedRef.current && startTimeRef.current) {
         doLaunch()

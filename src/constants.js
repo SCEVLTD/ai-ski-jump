@@ -57,9 +57,9 @@ export const MAX_DISTANCE = 200 // theoretical max in metres
 // Timing windows (milliseconds from optimal moment)
 // ---------------------------------------------------------------------------
 export const TIMING = {
-  perfect: 50, // +/-50ms — very tight
-  good: 130, // +/-130ms
-  ok: 280, // +/-280ms
+  perfect: 100, // +/-100ms — tight but achievable on mobile
+  good: 220, // +/-220ms — attentive players land here
+  ok: 400, // +/-400ms — casual players get this
 }
 
 // ---------------------------------------------------------------------------
@@ -77,20 +77,20 @@ export const LAUNCH_ANGLES = {
 // Speed multipliers based on timing quality
 // ---------------------------------------------------------------------------
 export const SPEED_MULT = {
-  perfect: 1.2,
-  good: 0.95,
-  ok: 0.75,
-  miss: 0.55,
+  perfect: 1.15,
+  good: 1.0,
+  ok: 0.82,
+  miss: 0.65,
 }
 
 // ---------------------------------------------------------------------------
 // Landing style multipliers
 // ---------------------------------------------------------------------------
 export const LANDING_MULT = {
-  telemark: 1.3, // perfect landing — reward but not OP
+  telemark: 1.3, // perfect landing — reward
   clean: 1.1, // good landing
-  shaky: 0.9, // ok landing — slight penalty
-  crash: 0.6, // crash — lose 40% of distance
+  shaky: 0.95, // ok landing — tiny penalty
+  crash: 0.7, // crash — lose 30% of distance
 }
 
 // ---------------------------------------------------------------------------

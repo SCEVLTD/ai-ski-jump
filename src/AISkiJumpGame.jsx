@@ -162,6 +162,9 @@ export default function AISkiJumpGame() {
   const shakeWrapperRef = useRef(null)
   const cameraXRef = useRef(0)
 
+  // Input lockout — prevents cascading inputs across state transitions
+  const inputLockedUntilRef = useRef(0)
+
   // ---- Snow burst particles (appended to trail container) ----
   const spawnSnowBurst = useCallback((landX, landY, grade) => {
     const container = trailRef.current
@@ -303,6 +306,11 @@ export default function AISkiJumpGame() {
   // STATE TRANSITIONS
   // ===========================================================================
 
+  // Helper: lock input for N ms after state changes
+  const lockInput = useCallback((ms = 400) => {
+    inputLockedUntilRef.current = performance.now() + ms
+  }, [])
+
   const handleStart = useCallback(() => {
     const tutorialSeen = lsGet(LS_TUTORIAL, false)
     setCurrentRound(0)
@@ -312,6 +320,7 @@ export default function AISkiJumpGame() {
     setFinalGrade(null)
     setIsNewRecord(false)
     resetCameraInstant()
+    lockInput(500)
 
     if (!tutorialSeen) {
       setScreen('TUTORIAL')
@@ -319,13 +328,14 @@ export default function AISkiJumpGame() {
       generateWind()
       setScreen('ROUND_INTRO')
     }
-  }, [generateWind, resetCameraInstant])
+  }, [generateWind, resetCameraInstant, lockInput])
 
   const handleTutorialDismiss = useCallback(() => {
     lsSet(LS_TUTORIAL, true)
     generateWind()
+    lockInput(500)
     setScreen('ROUND_INTRO')
-  }, [generateWind])
+  }, [generateWind, lockInput])
 
   // ---- ROUND_INTRO → APPROACH (with camera reset animation) ----
   useEffect(() => {
@@ -352,6 +362,7 @@ export default function AISkiJumpGame() {
 
     const introDuration = currentRound === 0 ? ROUND_INTRO_DURATION : ROUND_INTRO_FAST
     const timer = setTimeout(() => {
+      inputLockedUntilRef.current = performance.now() + 400
       setScreen('APPROACH')
     }, introDuration)
     return () => {
@@ -1077,6 +1088,7 @@ export default function AISkiJumpGame() {
                 active={screen === 'APPROACH'}
                 onLaunch={handleLaunch}
                 gameScale={1}
+                inputLockedUntilRef={inputLockedUntilRef}
               />
 
               {/* ---- LANDING TIMER (inside scrolling layer) ---- */}
@@ -1086,6 +1098,7 @@ export default function AISkiJumpGame() {
                 onLand={handleLand}
                 jumperPos={jumperPos}
                 gameScale={1}
+                inputLockedUntilRef={inputLockedUntilRef}
               />
             </SkiJumpScene>
           </div>
