@@ -15,11 +15,11 @@ import { LANDING_MULT, BRAND } from './constants'
 /** flightProgress value at which the timing is optimal */
 const OPTIMAL_PROGRESS = 0.82
 
-/** Landing grades — error thresholds and payloads (slightly wider windows) */
+/** Landing grades — error thresholds and payloads (tighter for challenge) */
 const GRADES = [
-  { maxError: 0.07, grade: 'telemark', multiplier: LANDING_MULT.telemark },
-  { maxError: 0.14, grade: 'clean',    multiplier: LANDING_MULT.clean },
-  { maxError: 0.22, grade: 'shaky',    multiplier: LANDING_MULT.shaky },
+  { maxError: 0.04, grade: 'telemark', multiplier: LANDING_MULT.telemark },
+  { maxError: 0.10, grade: 'clean',    multiplier: LANDING_MULT.clean },
+  { maxError: 0.18, grade: 'shaky',    multiplier: LANDING_MULT.shaky },
 ]
 const CRASH_GRADE = { grade: 'crash', multiplier: LANDING_MULT.crash }
 

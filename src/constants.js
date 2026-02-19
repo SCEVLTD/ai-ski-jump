@@ -57,9 +57,9 @@ export const MAX_DISTANCE = 200 // theoretical max in metres
 // Timing windows (milliseconds from optimal moment)
 // ---------------------------------------------------------------------------
 export const TIMING = {
-  perfect: 80, // +/-80ms
-  good: 200, // +/-200ms
-  ok: 400, // +/-400ms
+  perfect: 50, // +/-50ms — very tight
+  good: 130, // +/-130ms
+  ok: 280, // +/-280ms
 }
 
 // ---------------------------------------------------------------------------
@@ -77,20 +77,20 @@ export const LAUNCH_ANGLES = {
 // Speed multipliers based on timing quality
 // ---------------------------------------------------------------------------
 export const SPEED_MULT = {
-  perfect: 1.15,
-  good: 1.0,
-  ok: 0.85,
-  miss: 0.7,
+  perfect: 1.2,
+  good: 0.95,
+  ok: 0.75,
+  miss: 0.55,
 }
 
 // ---------------------------------------------------------------------------
 // Landing style multipliers
 // ---------------------------------------------------------------------------
 export const LANDING_MULT = {
-  telemark: 1.5, // perfect landing
-  clean: 1.2, // good landing
-  shaky: 1.0, // ok landing
-  crash: 0.8, // missed/late
+  telemark: 1.3, // perfect landing — reward but not OP
+  clean: 1.1, // good landing
+  shaky: 0.9, // ok landing — slight penalty
+  crash: 0.6, // crash — lose 40% of distance
 }
 
 // ---------------------------------------------------------------------------
@@ -115,11 +115,11 @@ export const JUMPERS = [
 // Ordered highest-first so the first match wins.
 // ---------------------------------------------------------------------------
 export const GRADE_TIERS = [
-  { min: 450, label: "Olympic Champion", emoji: "🥇" },
-  { min: 370, label: "World Class", emoji: "🏆" },
-  { min: 280, label: "Pro Jumper", emoji: "🎿" },
-  { min: 180, label: "Ski Enthusiast", emoji: "⛷️" },
-  { min: 80, label: "Snow Bunny", emoji: "🐰" },
+  { min: 400, label: "Olympic Champion", emoji: "🥇" },
+  { min: 300, label: "World Class", emoji: "🏆" },
+  { min: 200, label: "Pro Jumper", emoji: "🎿" },
+  { min: 120, label: "Ski Enthusiast", emoji: "⛷️" },
+  { min: 50, label: "Snow Bunny", emoji: "🐰" },
   { min: 0, label: "Après-Ski Only", emoji: "🍺" },
 ]
 
