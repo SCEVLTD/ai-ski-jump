@@ -156,6 +156,8 @@ export default function AISkiJumpGame() {
   const jumperBodyRef = useRef(null)
   const telemarkVRef = useRef(null)
   const gameContainerRef = useRef(null)
+  const landingFlashRef = useRef(null)
+  const lastMilestoneRef = useRef(0)
 
   // Camera tracking refs
   const scrollLayerRef = useRef(null)
@@ -382,7 +384,7 @@ export default function AISkiJumpGame() {
     if (jumperBodyRef.current) {
       jumperBodyRef.current.style.animation = ''
       jumperBodyRef.current.style.transition = 'transform 0.15s ease-out'
-      jumperBodyRef.current.style.transform = 'scaleX(0.85) scaleY(1.1)' // tuck pose
+      jumperBodyRef.current.style.transform = 'scaleY(0.75) scaleX(1.15)' // crouch tuck
     }
 
     function tick() {
@@ -392,11 +394,9 @@ export default function AISkiJumpGame() {
       // Jumper position — game coordinates, centered on path (no rotation for emoji blob)
       if (jumperRef.current) {
         jumperRef.current.style.transform =
-          `translate(${pos.x - 18}px, ${pos.y - 18}px)`
+          `translate(${pos.x - 21}px, ${pos.y - 21}px)`
       }
-      if (jumperBodyRef.current) {
-        jumperBodyRef.current.style.transform = 'scale(0.9)' // slight tuck
-      }
+      // Tuck pose is set once at approach start — don't overwrite per frame
 
       // Camera: ensure at 0 during approach
       if (cameraXRef.current > 0.5) {
@@ -489,14 +489,14 @@ export default function AISkiJumpGame() {
         }
       }
 
-      // Spring effect — brief scale pop then settle to flight pose
+      // Spring effect — brief scale pop then settle to aerodynamic flight pose
       if (jumperBodyRef.current) {
         jumperBodyRef.current.style.transition = 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)'
-        jumperBodyRef.current.style.transform = 'scale(1.2)'
+        jumperBodyRef.current.style.transform = 'scale(1.25)'
         setTimeout(() => {
           if (jumperBodyRef.current) {
             jumperBodyRef.current.style.transition = 'transform 0.2s ease-out'
-            jumperBodyRef.current.style.transform = 'scale(1)' // SVG is already in flight shape
+            jumperBodyRef.current.style.transform = 'scaleX(1.3) scaleY(0.8)' // aerodynamic elongation
           }
         }, 100)
       }
@@ -523,6 +523,7 @@ export default function AISkiJumpGame() {
       setLiveDistance(0)
       frameCountRef.current = 0
       lastTimeRef.current = performance.now()
+      lastMilestoneRef.current = 0
 
       const ws = playSound('wind')
       windSoundRef.current = ws
@@ -553,11 +554,9 @@ export default function AISkiJumpGame() {
       // Update jumper position — game coordinates, centered (no rotation for emoji blob)
       if (jumperRef.current) {
         jumperRef.current.style.transform =
-          `translate(${state.x - 18}px, ${state.y - 18}px)`
+          `translate(${state.x - 21}px, ${state.y - 21}px)`
       }
-      if (jumperBodyRef.current) {
-        jumperBodyRef.current.style.transform = 'scale(1)' // flight pose (SVG is already in flight shape)
-      }
+      // Flight elongation is set once at launch — don't overwrite per frame
 
       // ---- CAMERA TRACKING ----
       const targetCameraX = Math.max(0, Math.min(state.x - CAMERA_FOLLOW_X, CAMERA_MAX_X))
@@ -613,6 +612,22 @@ export default function AISkiJumpGame() {
         Math.max(0, Math.round(((state.x - startPos.x) / PIXELS_PER_METRE) * 10) / 10)
       if (liveDistRef.current) {
         liveDistRef.current.textContent = `${currentDist.toFixed(1)}m`
+
+        // Distance milestone pulses at 50m, 100m, 150m
+        const milestone = Math.floor(currentDist / 50) * 50
+        if (milestone > 0 && milestone > lastMilestoneRef.current) {
+          lastMilestoneRef.current = milestone
+          liveDistRef.current.style.transition = 'none'
+          liveDistRef.current.style.transform = 'translateX(-50%) scale(1.25)'
+          liveDistRef.current.style.color = BRAND.blueLight
+          requestAnimationFrame(() => {
+            if (liveDistRef.current) {
+              liveDistRef.current.style.transition = 'transform 0.4s ease-out, color 0.4s ease-out'
+              liveDistRef.current.style.transform = 'translateX(-50%) scale(1)'
+              liveDistRef.current.style.color = BRAND.white
+            }
+          })
+        }
       }
 
       const fp = Math.min(state.flightTime / flightTotalTimeEstRef.current, 1)
@@ -661,8 +676,15 @@ export default function AISkiJumpGame() {
         if (grade === 'crash') {
           jumperBodyRef.current.style.animation = 'crashTumble 0.4s ease-out forwards'
         } else {
-          jumperBodyRef.current.style.transform = 'scale(1)'
-          jumperBodyRef.current.style.transition = 'transform 0.15s ease-out'
+          // Snap from flight elongation back to upright landing pose
+          jumperBodyRef.current.style.transition = 'transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          jumperBodyRef.current.style.transform = 'scaleY(1.1) scaleX(0.9)'
+          setTimeout(() => {
+            if (jumperBodyRef.current) {
+              jumperBodyRef.current.style.transition = 'transform 0.2s ease-out'
+              jumperBodyRef.current.style.transform = 'scale(1)'
+            }
+          }, 150)
         }
       }
 
@@ -684,6 +706,15 @@ export default function AISkiJumpGame() {
 
       if (state) {
         spawnSnowBurst(state.x, state.y, grade)
+      }
+
+      // Impact freeze flash — brief white flash to register the landing moment
+      if (landingFlashRef.current) {
+        const flashOpacity = grade === 'crash' ? 0.2 : grade === 'telemark' ? 0.15 : 0.1
+        landingFlashRef.current.style.opacity = String(flashOpacity)
+        setTimeout(() => {
+          if (landingFlashRef.current) landingFlashRef.current.style.opacity = '0'
+        }, 60)
       }
 
       applyCameraShake(grade)
@@ -1003,10 +1034,10 @@ export default function AISkiJumpGame() {
                     position: 'absolute',
                     left: 0,
                     top: 0,
-                    width: 48,
-                    height: 28,
+                    width: 42,
+                    height: 42,
                     zIndex: 5,
-                    transform: `translate(${RAMP_TOP.x - 18}px, ${RAMP_TOP.y - 18}px)`,
+                    transform: `translate(${RAMP_TOP.x - 21}px, ${RAMP_TOP.y - 21}px)`,
                     transformOrigin: 'center center',
                     pointerEvents: 'none',
                   }}
@@ -1022,14 +1053,14 @@ export default function AISkiJumpGame() {
                     }}
                   >
                     <div style={{
-                      width: 36,
-                      height: 36,
+                      width: 42,
+                      height: 42,
                       borderRadius: '50%',
                       background: jumper.color,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 20,
+                      fontSize: 24,
                     }}>
                       {jumper.emoji}
                     </div>
@@ -1157,6 +1188,22 @@ export default function AISkiJumpGame() {
               0.0m
             </div>
           )}
+
+          {/* ============================================================= */}
+          {/* LANDING FLASH — brief white flash on impact                   */}
+          {/* ============================================================= */}
+          <div
+            ref={landingFlashRef}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'white',
+              opacity: 0,
+              transition: 'opacity 60ms ease-out',
+              pointerEvents: 'none',
+              zIndex: 45,
+            }}
+          />
 
           {/* ============================================================= */}
           {/* OVERLAY LAYER — fullscreen overlays                           */}
