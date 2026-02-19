@@ -378,13 +378,13 @@ export default function AISkiJumpGame() {
       const elapsed = performance.now() - approachStartRef.current
       const pos = calculateApproach(elapsed, APPROACH_DURATION)
 
-      // Jumper position — game coordinates, centered on path
+      // Jumper position — game coordinates, centered on path (no rotation for emoji blob)
       if (jumperRef.current) {
         jumperRef.current.style.transform =
-          `translate(${pos.x - 18}px, ${pos.y - 18}px) rotate(38deg)`
+          `translate(${pos.x - 18}px, ${pos.y - 18}px)`
       }
       if (jumperBodyRef.current) {
-        jumperBodyRef.current.style.transform = 'scaleX(0.85) scaleY(1.1)' // tuck pose
+        jumperBodyRef.current.style.transform = 'scale(0.9)' // slight tuck
       }
 
       // Camera: ensure at 0 during approach
@@ -539,11 +539,10 @@ export default function AISkiJumpGame() {
 
       simulateFlight(state, startPos, dt)
 
-      // Update jumper position — game coordinates, centered
+      // Update jumper position — game coordinates, centered (no rotation for emoji blob)
       if (jumperRef.current) {
-        const angle = Math.atan2(state.vy, state.vx) * (180 / Math.PI)
         jumperRef.current.style.transform =
-          `translate(${state.x - 18}px, ${state.y - 18}px) rotate(${angle}deg)`
+          `translate(${state.x - 18}px, ${state.y - 18}px)`
       }
       if (jumperBodyRef.current) {
         jumperBodyRef.current.style.transform = 'scale(1)' // flight pose (SVG is already in flight shape)
