@@ -381,7 +381,7 @@ export default function AISkiJumpGame() {
       // Jumper position — game coordinates, centered on path
       if (jumperRef.current) {
         jumperRef.current.style.transform =
-          `translate(${pos.x - 24}px, ${pos.y - 14}px) rotate(38deg)`
+          `translate(${pos.x - 18}px, ${pos.y - 18}px) rotate(38deg)`
       }
       if (jumperBodyRef.current) {
         jumperBodyRef.current.style.transform = 'scaleX(0.85) scaleY(1.1)' // tuck pose
@@ -543,7 +543,7 @@ export default function AISkiJumpGame() {
       if (jumperRef.current) {
         const angle = Math.atan2(state.vy, state.vx) * (180 / Math.PI)
         jumperRef.current.style.transform =
-          `translate(${state.x - 24}px, ${state.y - 14}px) rotate(${angle}deg)`
+          `translate(${state.x - 18}px, ${state.y - 18}px) rotate(${angle}deg)`
       }
       if (jumperBodyRef.current) {
         jumperBodyRef.current.style.transform = 'scale(1)' // flight pose (SVG is already in flight shape)
@@ -996,7 +996,7 @@ export default function AISkiJumpGame() {
                     width: 48,
                     height: 28,
                     zIndex: 5,
-                    transform: `translate(${RAMP_TOP.x - 24}px, ${RAMP_TOP.y - 14}px)`,
+                    transform: `translate(${RAMP_TOP.x - 18}px, ${RAMP_TOP.y - 18}px)`,
                     transformOrigin: 'center center',
                     pointerEvents: 'none',
                   }}
@@ -1011,19 +1011,18 @@ export default function AISkiJumpGame() {
                       filter: `drop-shadow(0 2px 6px rgba(0,0,0,0.6)) drop-shadow(0 0 12px ${jumper.color}66)`,
                     }}
                   >
-                    <svg width="48" height="28" viewBox="0 0 48 28" fill="none">
-                      {/* Head/helmet */}
-                      <circle cx="8" cy="10" r="4.5" fill={jumper.color} />
-                      <path d="M5 8.5 Q8 6 11 8.5" stroke={BRAND.white} strokeWidth="1.2" fill="none" opacity="0.5" />
-                      {/* Body — leaning forward */}
-                      <line x1="12" y1="11" x2="32" y2="16" stroke={BRAND.white} strokeWidth="3.5" strokeLinecap="round" />
-                      {/* Arm — along body */}
-                      <line x1="18" y1="12" x2="28" y2="10" stroke={BRAND.white} strokeWidth="2.5" strokeLinecap="round" />
-                      {/* Front ski (V-style) */}
-                      <line x1="30" y1="15" x2="46" y2="22" stroke={BRAND.white} strokeWidth="2.5" strokeLinecap="round" />
-                      {/* Back ski (V-style) */}
-                      <line x1="30" y1="18" x2="45" y2="27" stroke={BRAND.white} strokeWidth="2.5" strokeLinecap="round" />
-                    </svg>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: jumper.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 20,
+                    }}>
+                      {jumper.emoji}
+                    </div>
                   </div>
                   {/* Telemark landing indicator */}
                   <div
