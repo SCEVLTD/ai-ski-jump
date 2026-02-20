@@ -1,0 +1,115 @@
+/* AI Ski Jump Championship - Animations */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes windEffect {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes snowfall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
+@keyframes rampGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(37, 99, 235, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.5); }
+}
+
+@keyframes landingBurst {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+@keyframes tapPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
+@keyframes shakeLight {
+  0% { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes shakeMedium {
+  0% { transform: translateX(-3px); }
+  25% { transform: translateX(3px); }
+  50% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes shakeHeavy {
+  0% { transform: translateX(-5px); }
+  16% { transform: translateX(5px); }
+  33% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  66% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes crashTumble {
+  0% { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(720deg) scale(0.8); }
+}
+
+@keyframes floodlightPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.15); }
+}
+
+@keyframes ctaGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.4), 0 0 40px rgba(124, 58, 237, 0.2); transform: scale(1); }
+  50% { box-shadow: 0 0 30px rgba(37, 99, 235, 0.7), 0 0 60px rgba(124, 58, 237, 0.4), 0 0 80px rgba(37, 99, 235, 0.2); transform: scale(1.04); }
+}
+
+.title-start-btn {
+  animation: fadeUp 0.6s ease-out 0.55s both, ctaGlow 2s ease-in-out 1.3s infinite !important;
+}
+
+.title-start-btn:hover {
+  filter: brightness(1.15);
+}
+
+@keyframes speedLine {
+  0% { opacity: 0.3; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(-80px); }
+}
+
+@keyframes launchBurst {
+  0% { opacity: 0.5; transform: rotate(var(--burst-angle)) translateX(0); }
+  100% { opacity: 0; transform: rotate(var(--burst-angle)) translateX(30px); }
+}
+
+@keyframes countdownPulse {
+  0% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  40% { transform: translate(-50%, -50%) scale(1.0); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0.7; }
+}
