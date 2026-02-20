@@ -159,6 +159,7 @@ export default function AISkiJumpGame() {
   const flightTotalTimeEstRef = useRef(3)
   const jumperBodyRef = useRef(null)
   const telemarkVRef = useRef(null)
+  const tutorialShownThisSessionRef = useRef(false)
   const gameContainerRef = useRef(null)
   const landingFlashRef = useRef(null)
   const lastMilestoneRef = useRef(0)
@@ -285,7 +286,6 @@ export default function AISkiJumpGame() {
   }, [])
 
   const handleStart = useCallback(() => {
-    const tutorialSeen = lsGet(LS_TUTORIAL, false)
     setCurrentRound(0)
     setScores([])
     setFinalScores([])
@@ -295,7 +295,9 @@ export default function AISkiJumpGame() {
     resetCameraInstant()
     lockInput(500)
 
-    if (!tutorialSeen) {
+    // Show tutorial on first game each page load
+    if (!tutorialShownThisSessionRef.current) {
+      tutorialShownThisSessionRef.current = true
       setScreen('TUTORIAL')
     } else {
       generateWind()
