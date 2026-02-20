@@ -174,7 +174,7 @@ export default function ResultsScreen({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  gap: '8px',
                   padding: '10px 12px',
                   borderRadius: '10px',
                   background: counted
@@ -192,31 +192,24 @@ export default function ResultsScreen({
                 <div style={{
                   fontSize: '20px',
                   lineHeight: 1,
-                  minWidth: '28px',
+                  minWidth: '24px',
                   textAlign: 'center',
                 }}>
                   {s.jumper?.emoji || "🏂"}
                 </div>
 
-                {/* Jumper name + round */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: BRAND.white,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {s.jumper?.name || `Round ${i + 1}`}
-                  </div>
-                  <div style={{
-                    fontSize: '11px',
-                    color: BRAND.grayLight,
-                    fontWeight: 600,
-                  }}>
-                    Round {i + 1}
-                  </div>
+                {/* Jumper name */}
+                <div style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: BRAND.white,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {s.jumper?.name || `Round ${i + 1}`}
                 </div>
 
                 {/* Distance */}
@@ -224,8 +217,7 @@ export default function ResultsScreen({
                   fontSize: '16px',
                   fontWeight: 800,
                   color: BRAND.white,
-                  minWidth: '64px',
-                  textAlign: 'right',
+                  whiteSpace: 'nowrap',
                 }}>
                   {s.distance.toFixed(1)}m
                 </div>
@@ -235,20 +227,9 @@ export default function ResultsScreen({
                   fontSize: '12px',
                   fontWeight: 700,
                   color: ld.color,
-                  minWidth: '90px',
-                  textAlign: 'right',
                   whiteSpace: 'nowrap',
                 }}>
                   {ld.icon} {ld.label}
-                </div>
-
-                {/* Counted star */}
-                <div style={{
-                  fontSize: '16px',
-                  minWidth: '20px',
-                  textAlign: 'center',
-                }}>
-                  {counted ? "⭐" : ""}
                 </div>
               </div>
             )
