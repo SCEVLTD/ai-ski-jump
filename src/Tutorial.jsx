@@ -1,268 +1,198 @@
-import { useEffect, useCallback } from 'react'
+// =============================================================================
+// AI Ski Jump Championship — Tutorial Screen
+// Overlay explaining the two-tap mechanics before the first game.
+// =============================================================================
+
+import { useState, useEffect } from 'react'
 import { BRAND, GAME_W, GAME_H } from './constants'
 
 const FONT = "'Open Sans','Segoe UI',system-ui,sans-serif"
-
-const STYLE_ID = 'tutorial-keyframes'
-const KEYFRAMES = `
-@keyframes tutorialFadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes dotMove {
-  0% { left: 15%; top: 60%; opacity: 0; }
-  10% { opacity: 1; }
-  35% { left: 35%; top: 75%; }
-  36% { left: 35%; top: 75%; filter: brightness(2); }
-  40% { filter: brightness(1); }
-  65% { left: 70%; top: 45%; }
-  66% { left: 70%; top: 45%; filter: brightness(2); }
-  70% { filter: brightness(1); }
-  90% { left: 85%; top: 75%; opacity: 1; }
-  100% { left: 85%; top: 75%; opacity: 0; }
-}
-@keyframes tapFlash1 {
-  0%, 34% { opacity: 0; transform: scale(0.5); }
-  36% { opacity: 1; transform: scale(1.3); }
-  42% { opacity: 0; transform: scale(1.8); }
-  100% { opacity: 0; }
-}
-@keyframes tapFlash2 {
-  0%, 64% { opacity: 0; transform: scale(0.5); }
-  66% { opacity: 1; transform: scale(1.3); }
-  72% { opacity: 0; transform: scale(1.8); }
-  100% { opacity: 0; }
-}
-`
-
-function injectKeyframes() {
-  if (document.getElementById(STYLE_ID)) return
-  const style = document.createElement('style')
-  style.id = STYLE_ID
-  style.textContent = KEYFRAMES
-  document.head.appendChild(style)
-}
+const DISPLAY_FONT = "'Barlow Condensed','Open Sans',system-ui,sans-serif"
 
 export default function Tutorial({ onDismiss, gameScale }) {
+  const [step, setStep] = useState(0)
+  const [isDesktop, setIsDesktop] = useState(false)
+
   useEffect(() => {
-    injectKeyframes()
+    const mq = window.matchMedia('(pointer: fine)')
+    setIsDesktop(mq.matches)
   }, [])
 
-  const dismiss = useCallback(() => {
-    onDismiss()
-  }, [onDismiss])
-
+  // Allow clicking/tapping anywhere to advance
   useEffect(() => {
-    const handler = (e) => {
-      if (e.code === 'Space') {
-        e.preventDefault()
-        dismiss()
+    const handleTap = (e) => {
+      // If it's a keydown, only accept Space
+      if (e.type === 'keydown' && e.code !== 'Space') return
+      e.preventDefault() // prevent space from scrolling
+      
+      if (step === 2) { // 3 steps total
+        onDismiss()
+      } else {
+        setStep(s => s + 1)
       }
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [dismiss])
 
-  const scale = gameScale || 1
+    window.addEventListener('keydown', handleTap)
+    window.addEventListener('pointerdown', handleTap)
+    
+    return () => {
+      window.removeEventListener('keydown', handleTap)
+      window.removeEventListener('pointerdown', handleTap)
+    }
+  }, [step, onDismiss])
+
+  const steps = [
+    {
+      title: "1. THE LAUNCH",
+      desc: "Tap when the moving ring perfectly aligns with the centre circle to maximize launch velocity.",
+      visual: (
+        <div style={{ position: 'relative', width: 100, height: 100, margin: '0 auto' }}>
+          <div style={{
+            position: 'absolute', inset: 10, borderRadius: '50%',
+            border: `3px solid ${BRAND.white}`, opacity: 0.3,
+          }} />
+          <div style={{
+            position: 'absolute', inset: 25, borderRadius: '50%',
+            background: BRAND.blue, opacity: 0.5,
+          }} />
+          <div style={{
+            position: 'absolute', inset: 35, borderRadius: '50%',
+            background: BRAND.white,
+          }} />
+          {/* Animated shrinking ring */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            border: `4px solid ${BRAND.blueLight}`,
+            animation: 'shrinkRing 1.5s ease-out infinite'
+          }} />
+        </div>
+      )
+    },
+    {
+      title: "2. MID-AIR BOOST",
+      desc: isDesktop ? "Press any Arrow key or Space to boost distance mid-air (max 3 times)!" : "Tap the screen mid-air to boost your distance (max 3 times)!",
+      visual: (
+        <div style={{ position: 'relative', width: 100, height: 100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: '50%', background: BRAND.orange,
+            animation: 'pulse 0.5s ease-in-out infinite alternate',
+            boxShadow: `0 0 15px ${BRAND.orange}`
+          }} />
+        </div>
+      )
+    },
+    {
+      title: "3. THE LANDING",
+      desc: isDesktop ? "Press Space exactly as you hit the slope to stick a perfect landing." : "Tap exactly as you hit the slope to stick a perfect landing.",
+      visual: (
+        <div style={{ position: 'relative', width: 100, height: 100, margin: '0 auto', overflow: 'hidden' }}>
+          {/* Slope */}
+          <div style={{
+            position: 'absolute', top: 50, left: -20, right: -20, height: 100,
+            background: '#CBD5E1', transform: 'rotate(20deg)'
+          }} />
+          {/* Jumper dropping */}
+          <div style={{
+            position: 'absolute', top: 10, left: 35, width: 30, height: 30,
+            borderRadius: '50%', background: BRAND.blue,
+            animation: 'dropLand 2s ease-in forwards infinite'
+          }} />
+        </div>
+      )
+    }
+  ]
+
+  const current = steps[step]
 
   return (
-    <div
-      onClick={dismiss}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: GAME_W * scale,
-        height: GAME_H * scale,
-        zIndex: 9999,
-        cursor: 'pointer',
-        fontFamily: FONT,
-        userSelect: 'none',
-        WebkitTapHighlightColor: 'transparent',
-      }}
-    >
-      {/* Dark overlay */}
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      background: 'rgba(17, 24, 39, 0.85)',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+      zIndex: 60,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+    }}>
+      <style>{`
+        @keyframes shrinkRing {
+          0% { transform: scale(1); opacity: 0; }
+          20% { opacity: 1; }
+          80% { transform: scale(0.35); opacity: 1; }
+          100% { transform: scale(0.35); opacity: 0; }
+        }
+        @keyframes dropLand {
+          0% { transform: translateY(0); opacity: 0; }
+          20% { opacity: 1; }
+          80% { transform: translateY(50px); opacity: 1; }
+          90% { transform: translateY(50px) scale(1.5, 0.5); opacity: 1; }
+          100% { transform: translateY(50px); opacity: 0; }
+        }
+      `}</style>
+      
       <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'rgba(0,0,0,0.8)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-      }} />
-
-      {/* Content */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: `${20 * scale}px`,
+        background: '#1F2937', // BRAND.darkMid
+        borderRadius: '16px',
+        padding: '32px 24px',
+        width: '100%',
+        maxWidth: '320px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+        animation: 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)',
       }}>
-        {/* Main instruction */}
-        <div style={{
-          fontSize: `${Math.max(26, 28 * scale)}px`,
-          fontWeight: 800,
-          color: BRAND.white,
-          textAlign: 'center',
-          marginBottom: 8 * scale,
-          animation: 'tutorialFadeUp 0.4s ease-out both',
-          textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-          lineHeight: 1.3,
-        }}>
-          Tap to Launch.
-          <br />
-          Tap to Boost.
-          <br />
-          Tap to Land.
+        {/* Progress dots */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
+          {steps.map((_, i) => (
+            <div key={i} style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: i === step ? BRAND.blue : '#374151',
+              transition: 'background 0.3s'
+            }} />
+          ))}
         </div>
 
-        {/* Ring mechanic hint */}
-        <div style={{
-          fontSize: `${Math.max(13, 14 * scale)}px`,
-          fontWeight: 600,
-          color: BRAND.green,
-          textAlign: 'center',
-          marginBottom: 6 * scale,
-          animation: 'tutorialFadeUp 0.4s ease-out 0.08s both',
-        }}>
-          Tap when the ring turns GREEN
-        </div>
-
-        {/* Sub text */}
-        <div style={{
-          fontSize: `${Math.max(12, 13 * scale)}px`,
-          fontWeight: 500,
-          color: BRAND.grayLight,
-          textAlign: 'center',
-          marginBottom: 28 * scale,
-          animation: 'tutorialFadeUp 0.4s ease-out 0.15s both',
-        }}>
-          Boost in-flight, then time your landing!
-        </div>
-
-        {/* Animated diagram */}
-        <div style={{
-          position: 'relative',
-          width: Math.min(300 * scale, GAME_W * scale - 40),
-          height: 100 * scale,
-          marginBottom: 32 * scale,
-          animation: 'tutorialFadeUp 0.4s ease-out 0.2s both',
-        }}>
-          {/* Ramp line */}
-          <svg
-            viewBox="0 0 300 100"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-            }}
-          >
-            {/* Ramp slope */}
-            <line x1="45" y1="60" x2="105" y2="78" stroke={BRAND.grayLight} strokeWidth="2" opacity="0.4" />
-            {/* Flight arc */}
-            <path d="M 105 78 Q 165 20 210 48" fill="none" stroke={BRAND.grayLight} strokeWidth="1.5" strokeDasharray="4 3" opacity="0.3" />
-            {/* Landing slope */}
-            <line x1="210" y1="48" x2="265" y2="78" stroke={BRAND.grayLight} strokeWidth="2" opacity="0.4" />
-          </svg>
-
-          {/* Moving dot */}
-          <div style={{
-            position: 'absolute',
-            width: 10 * scale,
-            height: 10 * scale,
-            borderRadius: '50%',
-            background: BRAND.blue,
-            boxShadow: `0 0 8px ${BRAND.blue}`,
-            animation: 'dotMove 3s ease-in-out infinite',
-            marginLeft: -5 * scale,
-            marginTop: -5 * scale,
-          }} />
-
-          {/* Tap flash at launch point */}
-          <div style={{
-            position: 'absolute',
-            left: '35%',
-            top: '75%',
-            width: 24 * scale,
-            height: 24 * scale,
-            borderRadius: '50%',
-            border: `2px solid ${BRAND.green}`,
-            marginLeft: -12 * scale,
-            marginTop: -12 * scale,
-            animation: 'tapFlash1 3s ease-out infinite',
-            pointerEvents: 'none',
-          }} />
-
-          {/* Tap flash at landing point */}
-          <div style={{
-            position: 'absolute',
-            left: '70%',
-            top: '45%',
-            width: 24 * scale,
-            height: 24 * scale,
-            borderRadius: '50%',
-            border: `2px solid ${BRAND.green}`,
-            marginLeft: -12 * scale,
-            marginTop: -12 * scale,
-            animation: 'tapFlash2 3s ease-out infinite',
-            pointerEvents: 'none',
-          }} />
-
-          {/* Label: TAP 1 */}
-          <div style={{
-            position: 'absolute',
-            left: '35%',
-            top: '92%',
-            transform: 'translateX(-50%)',
-            fontSize: `${Math.max(10, 10 * scale)}px`,
-            fontWeight: 700,
-            color: BRAND.green,
-            letterSpacing: '0.5px',
-          }}>
-            TAP
-          </div>
-
-          {/* Label: TAP 2 */}
-          <div style={{
-            position: 'absolute',
-            left: '70%',
-            top: '22%',
-            transform: 'translateX(-50%)',
-            fontSize: `${Math.max(10, 10 * scale)}px`,
-            fontWeight: 700,
-            color: BRAND.green,
-            letterSpacing: '0.5px',
-          }}>
-            TAP
-          </div>
-        </div>
-
-        {/* Got it button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            dismiss()
-          }}
-          style={{
-            background: `linear-gradient(135deg, ${BRAND.blue}, ${BRAND.blueDark})`,
-            border: 'none',
-            borderRadius: 12 * scale,
-            padding: `${12 * scale}px ${36 * scale}px`,
-            fontSize: `${Math.max(16, 16 * scale)}px`,
-            fontWeight: 700,
+        {/* Content */}
+        <div style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
+          {current.visual}
+          
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 800,
             color: BRAND.white,
-            cursor: 'pointer',
+            textAlign: 'center',
+            margin: '20px 0 12px',
+            fontFamily: DISPLAY_FONT,
+            letterSpacing: '1px',
+          }}>
+            {current.title}
+          </h2>
+          
+          <p style={{
+            fontSize: '15px',
+            color: BRAND.grayLight,
+            textAlign: 'center',
+            lineHeight: 1.5,
+            margin: 0,
             fontFamily: FONT,
-            boxShadow: `0 4px 20px ${BRAND.blue}44`,
-            letterSpacing: '0.5px',
-            animation: 'tutorialFadeUp 0.4s ease-out 0.3s both',
-          }}
-        >
-          Got it!
-        </button>
+          }}>
+            {current.desc}
+          </p>
+        </div>
+
+        {/* Action */}
+        <div style={{
+          marginTop: 32,
+          textAlign: 'center',
+          fontSize: '13px',
+          fontWeight: 600,
+          color: BRAND.blueLight,
+          animation: 'pulse 1.5s infinite',
+        }}>
+          {isDesktop ? "Press SPACE to continue" : "Tap anywhere to continue"}
+        </div>
       </div>
     </div>
   )

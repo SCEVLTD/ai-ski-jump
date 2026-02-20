@@ -1,8 +1,8 @@
 // =============================================================================
 // AI Ski Jump Championship — Main Game Orchestrator (T7 + T8)
-// Camera-tracked scene with two-layer rendering:
-//   1. Scrolling layer: scene + jumper + trail + timers (moves with camera)
-//   2. Fixed layer: HUD + overlays (stays in viewport)
+// Wires together all components: scene, timers, physics, sounds, screens.
+// State machine: TITLE → TUTORIAL → ROUND_INTRO → APPROACH → FLIGHT →
+//                LANDING → SCORE_DISPLAY → (next round or RESULTS)
 // =============================================================================
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -26,6 +26,9 @@ import {
   LANDING_MULT,
   getDistanceMessage,
   getGrade,
+  MAX_BOOSTS,
+  BOOST_VX,
+  BOOST_VY
 } from './constants'
 
 import {
@@ -62,10 +65,6 @@ const DISPLAY_FONT = "'Barlow Condensed','Open Sans',system-ui,sans-serif"
 const CAMERA_FOLLOW_X = GAME_W * 0.35 // jumper kept at 35% from left
 const CAMERA_MAX_X = SCENE_W - GAME_W  // max pan (400px)
 const CAMERA_LERP = 0.12               // smooth follow speed
-
-// In-flight aero boost
-const MAX_BOOSTS = 4
-const BOOST_VX = 14 // px/s added per tap
 
 const LANDING_BADGE_BG = {
   telemark: BRAND.green,
@@ -133,6 +132,7 @@ export default function AISkiJumpGame() {
   const [gamesPlayed, setGamesPlayed] = useState(0)
   const [soundMuted, setSoundMuted] = useState(false)
   const [liveDistance, setLiveDistance] = useState(0)
+  const [boostCount, setBoostCount] = useState(0)
 
   const [challengerName, setChallengerName] = useState(null)
   const [challengerScore, setChallengerScore] = useState(null)
@@ -147,10 +147,10 @@ export default function AISkiJumpGame() {
 
   // ---- Refs ----
   const jumperRef = useRef(null)
-  const trailRef = useRef(null)
   const liveDistRef = useRef(null)
   const animFrameRef = useRef(null)
   const flightStateRef = useRef(null)
+  const boostsRef = useRef(0)
   const launchVelRef = useRef(null)
   const windSoundRef = useRef(null)
   const frameCountRef = useRef(0)
@@ -162,9 +162,10 @@ export default function AISkiJumpGame() {
   const gameContainerRef = useRef(null)
   const landingFlashRef = useRef(null)
   const lastMilestoneRef = useRef(0)
-  const boostCountRef = useRef(0)
-  const [boostCount, setBoostCount] = useState(0)
-  const boostFlashRef = useRef(null)
+
+  // Canvas layer for particles (snow bursts, trail, speed lines)
+  const canvasRef = useRef(null)
+  const particlesRef = useRef([])
 
   // Camera tracking refs
   const scrollLayerRef = useRef(null)
@@ -174,49 +175,29 @@ export default function AISkiJumpGame() {
   // Input lockout — prevents cascading inputs across state transitions
   const inputLockedUntilRef = useRef(0)
 
-  // ---- Snow burst particles (appended to trail container) ----
+  // ---- Particle Helpers ----
   const spawnSnowBurst = useCallback((landX, landY, grade) => {
-    const container = trailRef.current
-    if (!container) return
-
-    const count = grade === 'telemark' ? 8 : grade === 'clean' ? 12 : grade === 'shaky' ? 16 : 22
+    const count = grade === 'telemark' ? 20 : grade === 'clean' ? 30 : grade === 'shaky' ? 40 : 60
     const spread = grade === 'telemark' ? 40 : grade === 'clean' ? 60 : grade === 'shaky' ? 80 : 120
 
+    const now = performance.now()
     for (let i = 0; i < count; i++) {
-      const particle = document.createElement('div')
-      const size = 4 + Math.random() * 4
       const angle = Math.random() * Math.PI * 2
       const speed = (0.3 + Math.random() * 0.7) * spread
-      const dx = Math.cos(angle) * speed
-      const dy = Math.sin(angle) * speed - Math.abs(Math.sin(angle)) * spread * 0.3
-
-      particle.style.cssText = `
-        position:absolute;
-        left:${landX}px;
-        top:${landY}px;
-        width:${size}px;
-        height:${size}px;
-        border-radius:50%;
-        background:white;
-        opacity:0.9;
-        pointer-events:none;
-        z-index:10;
-        transition:all 500ms cubic-bezier(0.25,0.46,0.45,0.94);
-      `
-      container.appendChild(particle)
-
-      requestAnimationFrame(() => {
-        particle.style.transform = `translate(${dx}px, ${dy}px)`
-        particle.style.opacity = '0'
+      particlesRef.current.push({
+        type: 'snow',
+        x: landX,
+        y: landY,
+        vx: Math.cos(angle) * speed * 2,
+        vy: (Math.sin(angle) * speed - Math.abs(Math.sin(angle)) * spread * 0.3) * 2,
+        size: 2 + Math.random() * 3,
+        born: now,
+        lifeTime: 500 + Math.random() * 200,
       })
-
-      setTimeout(() => {
-        if (particle.parentNode) particle.parentNode.removeChild(particle)
-      }, 550)
     }
   }, [])
 
-  // ---- Camera shake on landing (uses shakeWrapper to avoid clobbering container scale) ----
+  // ---- Camera shake on landing ----
   const applyCameraShake = useCallback((grade) => {
     const wrapper = shakeWrapperRef.current
     if (!wrapper) return
@@ -234,14 +215,6 @@ export default function AISkiJumpGame() {
   }, [])
 
   // ---- Camera helper: update scroll layer position ----
-  const updateCamera = useCallback((targetX) => {
-    const clamped = Math.max(0, Math.min(targetX, CAMERA_MAX_X))
-    cameraXRef.current += (clamped - cameraXRef.current) * CAMERA_LERP
-    if (scrollLayerRef.current) {
-      scrollLayerRef.current.style.transform = `translateX(${-cameraXRef.current}px)`
-    }
-  }, [])
-
   const resetCameraInstant = useCallback(() => {
     cameraXRef.current = 0
     if (scrollLayerRef.current) {
@@ -298,15 +271,6 @@ export default function AISkiJumpGame() {
       if (windSoundRef.current) {
         windSoundRef.current.stop()
         windSoundRef.current = null
-      }
-    }
-  }, [])
-
-  // ---- Clear trail dots ----
-  const clearTrail = useCallback(() => {
-    if (trailRef.current) {
-      while (trailRef.current.firstChild) {
-        trailRef.current.removeChild(trailRef.current.firstChild)
       }
     }
   }, [])
@@ -386,24 +350,23 @@ export default function AISkiJumpGame() {
 
     playSound('whoosh')
     approachStartRef.current = performance.now()
-    let lastSpeedLineTime = 0
+    particlesRef.current = [] // clear particles
 
     if (jumperBodyRef.current) {
-      jumperBodyRef.current.style.animation = ''
       jumperBodyRef.current.style.transition = 'transform 0.15s ease-out'
-      jumperBodyRef.current.style.transform = 'scaleY(0.75) scaleX(1.15)' // crouch tuck
+      jumperBodyRef.current.style.transform = 'scaleY(0.75) scaleX(1.15)'
     }
 
     function tick() {
-      const elapsed = performance.now() - approachStartRef.current
+      const now = performance.now()
+      const elapsed = now - approachStartRef.current
       const pos = calculateApproach(elapsed, APPROACH_DURATION)
 
-      // Jumper position — game coordinates, centered on path (no rotation for emoji blob)
+      // Jumper position
       if (jumperRef.current) {
         jumperRef.current.style.transform =
           `translate(${pos.x - 21}px, ${pos.y - 21}px)`
       }
-      // Tuck pose is set once at approach start — don't overwrite per frame
 
       // Camera: ensure at 0 during approach
       if (cameraXRef.current > 0.5) {
@@ -413,35 +376,49 @@ export default function AISkiJumpGame() {
         }
       }
 
-      // Speed lines behind jumper
-      if (elapsed - lastSpeedLineTime > 100 && elapsed < APPROACH_DURATION && trailRef.current) {
-        lastSpeedLineTime = elapsed
-        const lineCount = 3 + Math.floor(Math.random() * 3)
-        for (let i = 0; i < lineCount; i++) {
-          const line = document.createElement('div')
+      // Speed lines on Canvas
+      if (elapsed < APPROACH_DURATION) {
+        if (Math.random() > 0.6) {
           const offsetBack = 10 + Math.random() * 25
           const spread = (Math.random() - 0.5) * 16
           const rad38 = 38 * Math.PI / 180
-          const lx = pos.x - offsetBack * Math.cos(rad38) + spread * Math.sin(rad38)
-          const ly = pos.y - offsetBack * Math.sin(rad38) - spread * Math.cos(rad38)
-          const w = 25 + Math.random() * 25
-          line.style.cssText = `
-            position:absolute;
-            left:${lx}px;
-            top:${ly}px;
-            width:${w}px;
-            height:3px;
-            background:linear-gradient(90deg, white, transparent);
-            opacity:0.6;
-            pointer-events:none;
-            border-radius:2px;
-            transform:rotate(38deg);
-            animation:speedLine 300ms linear forwards;
-          `
-          trailRef.current.appendChild(line)
-          setTimeout(() => {
-            if (line.parentNode) line.parentNode.removeChild(line)
-          }, 350)
+          particlesRef.current.push({
+            type: 'speedLine',
+            x: pos.x - offsetBack * Math.cos(rad38) + spread * Math.sin(rad38),
+            y: pos.y - offsetBack * Math.sin(rad38) - spread * Math.cos(rad38),
+            w: 25 + Math.random() * 25,
+            angle: 38,
+            born: now,
+            lifeTime: 300
+          })
+        }
+      }
+
+      // Canvas Rendering
+      if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d')
+        ctx.clearRect(0, 0, SCENE_W, GAME_H)
+        for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+          const p = particlesRef.current[i]
+          const life = (now - p.born) / p.lifeTime
+          if (life >= 1) {
+            particlesRef.current.splice(i, 1)
+            continue
+          }
+          if (p.type === 'speedLine') {
+            ctx.save()
+            ctx.translate(p.x, p.y)
+            ctx.rotate((p.angle * Math.PI) / 180)
+            const alpha = 0.6 * (1 - life)
+            const grad = ctx.createLinearGradient(0, 0, p.w, 0)
+            grad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`)
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+            ctx.fillStyle = grad
+            ctx.fillRect(0, -1.5, p.w, 3)
+            ctx.restore()
+            p.x -= 2 // move backwards fast
+            p.y -= 1.5
+          }
         }
       }
 
@@ -468,44 +445,23 @@ export default function AISkiJumpGame() {
       playSound('launch')
       vibrate([30])
 
-      // Launch burst: radial lines from the lip
-      if (trailRef.current) {
-        const burstCount = 10
-        const cx = RAMP_LIP.x
-        const cy = RAMP_LIP.y
-        for (let i = 0; i < burstCount; i++) {
-          const angle = (i / burstCount) * 360
-          const burst = document.createElement('div')
-          burst.style.cssText = `
-            position:absolute;
-            left:${cx}px;
-            top:${cy}px;
-            width:15px;
-            height:2px;
-            background:white;
-            pointer-events:none;
-            border-radius:1px;
-            transform-origin:0 50%;
-            --burst-angle:${angle}deg;
-            animation:launchBurst 200ms ease-out forwards;
-          `
-          trailRef.current.appendChild(burst)
-          setTimeout(() => {
-            if (burst.parentNode) burst.parentNode.removeChild(burst)
-          }, 250)
-        }
+      // Launch burst on Canvas
+      const now = performance.now()
+      for (let i = 0; i < 10; i++) {
+        particlesRef.current.push({
+          type: 'launchBurst',
+          x: RAMP_LIP.x,
+          y: RAMP_LIP.y,
+          angle: (i / 10) * Math.PI * 2,
+          born: now,
+          lifeTime: 250
+        })
       }
 
-      // Spring effect — brief scale pop then settle to aerodynamic flight pose
+      // Spring up then settle to flight pose (elongated)
       if (jumperBodyRef.current) {
         jumperBodyRef.current.style.transition = 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)'
-        jumperBodyRef.current.style.transform = 'scale(1.25)'
-        setTimeout(() => {
-          if (jumperBodyRef.current) {
-            jumperBodyRef.current.style.transition = 'transform 0.2s ease-out'
-            jumperBodyRef.current.style.transform = 'scaleX(1.3) scaleY(0.8)' // aerodynamic elongation
-          }
-        }, 100)
+        jumperBodyRef.current.style.transform = 'scaleX(1.3) scaleY(0.8)'
       }
 
       // Calculate launch velocity
@@ -528,11 +484,11 @@ export default function AISkiJumpGame() {
 
       setFlightProgress(0)
       setLiveDistance(0)
+      boostsRef.current = 0
+      setBoostCount(0)
       frameCountRef.current = 0
       lastTimeRef.current = performance.now()
       lastMilestoneRef.current = 0
-      boostCountRef.current = 0
-      setBoostCount(0)
 
       const ws = playSound('wind')
       windSoundRef.current = ws
@@ -560,12 +516,13 @@ export default function AISkiJumpGame() {
 
       simulateFlight(state, startPos, dt)
 
-      // Update jumper position — game coordinates, centered (no rotation for emoji blob)
+      // Update jumper position
       if (jumperRef.current) {
         jumperRef.current.style.transform =
           `translate(${state.x - 21}px, ${state.y - 21}px)`
       }
-      // Flight elongation is set once at launch — don't overwrite per frame
+      
+      // Flight pose stays as scaleX(1.3) scaleY(0.8) — set at launch
 
       // ---- CAMERA TRACKING ----
       const targetCameraX = Math.max(0, Math.min(state.x - CAMERA_FOLLOW_X, CAMERA_MAX_X))
@@ -574,55 +531,67 @@ export default function AISkiJumpGame() {
         scrollLayerRef.current.style.transform = `translateX(${-cameraXRef.current}px)`
       }
 
-      // Trail dots every 2nd frame — altitude-based colouring
-      // Blue (high/safe) → Orange (getting close) → Red (land now!)
+      // Trail dots on Canvas
       frameCountRef.current++
-      if (frameCountRef.current % 2 === 0 && trailRef.current) {
+      if (frameCountRef.current % 2 === 0) {
         const hillY = getHillY(state.x)
-        const altitude = hillY - state.y // positive = above hill
-        const altRatio = Math.max(0, Math.min(1, altitude / 120)) // 0=on hill, 1=high up
-        // Colour: red(low) → orange(mid) → blue(high)
-        let trailColor, trailGlow
-        if (altRatio > 0.5) {
-          trailColor = BRAND.blueLight
-          trailGlow = `0 0 6px ${BRAND.blue}88`
-        } else if (altRatio > 0.2) {
-          trailColor = BRAND.orange
-          trailGlow = `0 0 8px ${BRAND.orange}88`
-        } else {
-          trailColor = BRAND.red
-          trailGlow = `0 0 10px ${BRAND.red}aa`
-        }
-        const dot = document.createElement('div')
-        dot.style.cssText = `
-          position:absolute;
-          left:${state.x - 4}px;
-          top:${state.y - 4}px;
-          width:8px;
-          height:8px;
-          border-radius:50%;
-          background:${trailColor};
-          opacity:0.7;
-          pointer-events:none;
-          transition:opacity 1.2s ease;
-          box-shadow:${trailGlow};
-        `
-        trailRef.current.appendChild(dot)
-        requestAnimationFrame(() => {
-          dot.style.opacity = '0'
+        const altitude = hillY - state.y
+        const altRatio = Math.max(0, Math.min(1, altitude / 120))
+        let trailColor
+        if (altRatio > 0.5) trailColor = BRAND.blueLight
+        else if (altRatio > 0.2) trailColor = BRAND.orange
+        else trailColor = BRAND.red
+
+        particlesRef.current.push({
+          type: 'trailDot',
+          x: state.x - 4,
+          y: state.y - 4,
+          color: trailColor,
+          born: now,
+          lifeTime: 1200
         })
-        setTimeout(() => {
-          if (dot.parentNode) dot.parentNode.removeChild(dot)
-        }, 1300)
       }
 
-      // Live distance (using correct PIXELS_PER_METRE)
+      // Canvas Rendering
+      if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d')
+        ctx.clearRect(0, 0, SCENE_W, GAME_H)
+        for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+          const p = particlesRef.current[i]
+          const life = (now - p.born) / p.lifeTime
+          if (life >= 1) {
+            particlesRef.current.splice(i, 1)
+            continue
+          }
+          ctx.globalAlpha = 1 - Math.pow(life, 2) // fade out slower then fast
+          if (p.type === 'trailDot') {
+            ctx.fillStyle = p.color
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2)
+            ctx.fill()
+            // Glow
+            ctx.shadowColor = p.color
+            ctx.shadowBlur = 8
+            ctx.fill()
+            ctx.shadowBlur = 0
+          } else if (p.type === 'launchBurst') {
+             ctx.save()
+             ctx.translate(p.x, p.y)
+             ctx.rotate(p.angle)
+             ctx.fillStyle = BRAND.white
+             ctx.fillRect(10 + life * 20, -1, 15, 2)
+             ctx.restore()
+          }
+        }
+        ctx.globalAlpha = 1.0
+      }
+
+      // Live distance
       const currentDist =
         Math.max(0, Math.round(((state.x - startPos.x) / PIXELS_PER_METRE) * 10) / 10)
       if (liveDistRef.current) {
         liveDistRef.current.textContent = `${currentDist.toFixed(1)}m`
 
-        // Distance milestone pulses at 50m, 100m, 150m
         const milestone = Math.floor(currentDist / 50) * 50
         if (milestone > 0 && milestone > lastMilestoneRef.current) {
           lastMilestoneRef.current = milestone
@@ -656,72 +625,43 @@ export default function AISkiJumpGame() {
     }
   }, [screen])
 
-  // ---- In-flight AERO BOOST — tapping during early flight adds velocity ----
-  useEffect(() => {
-    if (screen !== 'FLIGHT') return
+  // ---- onBoost callback from LandingTimer ----
+  const handleBoost = useCallback(() => {
+    const state = flightStateRef.current
+    if (!state || state.landed) return
 
-    function handleBoostInput(e) {
-      if (e.type === 'keydown' && e.code !== 'Space') return
-      if (e.type === 'keydown') e.preventDefault()
+    if (boostsRef.current >= MAX_BOOSTS) return
+    boostsRef.current += 1
+    setBoostCount(boostsRef.current)
 
-      // Only accept boosts during early flight (before landing zone)
-      const fp = flightStateRef.current
-        ? flightStateRef.current.flightTime / flightTotalTimeEstRef.current
-        : 0
-      if (fp >= 0.5) return // landing zone — let LandingTimer handle it
-      if (boostCountRef.current >= MAX_BOOSTS) return
-      if (inputLockedUntilRef.current > performance.now()) return
+    state.vx += BOOST_VX
+    state.vy -= BOOST_VY
 
-      // Apply velocity boost
-      if (flightStateRef.current) {
-        flightStateRef.current.vx += BOOST_VX
-        // Tiny upward lift too (20% of horizontal boost)
-        flightStateRef.current.vy -= BOOST_VX * 0.2
-      }
-
-      boostCountRef.current++
-      setBoostCount(boostCountRef.current)
-
-      playSound('tick')
-      vibrate([15])
-
-      // Visual: pulse the jumper
-      if (jumperBodyRef.current) {
-        jumperBodyRef.current.style.transition = 'none'
-        jumperBodyRef.current.style.transform = 'scaleX(1.5) scaleY(0.7)'
-        requestAnimationFrame(() => {
-          if (jumperBodyRef.current) {
-            jumperBodyRef.current.style.transition = 'transform 0.2s ease-out'
-            jumperBodyRef.current.style.transform = 'scaleX(1.3) scaleY(0.8)'
-          }
+    // Visual feedback for boost
+    if (jumperBodyRef.current) {
+       jumperBodyRef.current.style.filter = `drop-shadow(0 0 10px ${BRAND.white})`
+       setTimeout(() => {
+         if (jumperBodyRef.current) {
+            jumperBodyRef.current.style.filter = `drop-shadow(0 2px 6px rgba(0,0,0,0.6))`
+         }
+       }, 150)
+    }
+    
+    // Spawn burst effect
+    const angle = Math.atan2(state.vy, state.vx)
+    if (particlesRef.current) {
+      for(let i=0; i<8; i++){
+        particlesRef.current.push({
+           type: 'launchBurst',
+           x: state.x,
+           y: state.y,
+           angle: angle + (Math.random() - 0.5) * 0.8,
+           born: performance.now(),
+           lifeTime: 400
         })
       }
-
-      // Visual: flash boost text
-      if (boostFlashRef.current) {
-        boostFlashRef.current.style.opacity = '1'
-        boostFlashRef.current.style.transform = 'translateX(-50%) scale(1.3)'
-        requestAnimationFrame(() => {
-          if (boostFlashRef.current) {
-            boostFlashRef.current.style.transition = 'opacity 0.4s ease-out, transform 0.4s ease-out'
-            boostFlashRef.current.style.opacity = '0'
-            boostFlashRef.current.style.transform = 'translateX(-50%) scale(1)'
-          }
-        })
-      }
-
-      // Brief input cooldown to prevent mashing
-      inputLockedUntilRef.current = performance.now() + 180
     }
-
-    window.addEventListener('keydown', handleBoostInput)
-    window.addEventListener('pointerdown', handleBoostInput)
-
-    return () => {
-      window.removeEventListener('keydown', handleBoostInput)
-      window.removeEventListener('pointerdown', handleBoostInput)
-    }
-  }, [screen])
+  }, [])
 
   // ---- onLand callback from LandingTimer ----
   const handleLand = useCallback(
@@ -752,15 +692,9 @@ export default function AISkiJumpGame() {
         if (grade === 'crash') {
           jumperBodyRef.current.style.animation = 'crashTumble 0.4s ease-out forwards'
         } else {
-          // Snap from flight elongation back to upright landing pose
+          // Landing snap with bounce easing
           jumperBodyRef.current.style.transition = 'transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1)'
           jumperBodyRef.current.style.transform = 'scaleY(1.1) scaleX(0.9)'
-          setTimeout(() => {
-            if (jumperBodyRef.current) {
-              jumperBodyRef.current.style.transition = 'transform 0.2s ease-out'
-              jumperBodyRef.current.style.transform = 'scale(1)'
-            }
-          }, 150)
         }
       }
 
@@ -773,7 +707,6 @@ export default function AISkiJumpGame() {
         }, 500)
       }
 
-      // Calculate score using PIXELS_PER_METRE (not hardcoded 1.265)
       const state = flightStateRef.current
       const rawDist = state
         ? Math.max(0, (state.x - RAMP_LIP.x) / PIXELS_PER_METRE)
@@ -784,7 +717,46 @@ export default function AISkiJumpGame() {
         spawnSnowBurst(state.x, state.y, grade)
       }
 
-      // Impact freeze flash — brief white flash to register the landing moment
+      // Draw snow burst on canvas until transition
+      let landRaf = null
+      const landStartTime = performance.now()
+      function landTick() {
+        const now = performance.now()
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d')
+          ctx.clearRect(0, 0, SCENE_W, GAME_H)
+          for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+            const p = particlesRef.current[i]
+            const life = (now - p.born) / p.lifeTime
+            if (life >= 1) {
+              particlesRef.current.splice(i, 1)
+              continue
+            }
+            ctx.globalAlpha = 1 - life
+            if (p.type === 'snow') {
+              ctx.fillStyle = BRAND.white
+              ctx.beginPath()
+              ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+              ctx.fill()
+              p.x += p.vx * 0.016
+              p.y += p.vy * 0.016
+              p.vy += 0.2 // Gravity
+            } else if (p.type === 'trailDot') {
+              ctx.fillStyle = p.color
+              ctx.beginPath()
+              ctx.arc(p.x, p.y, 4, 0, Math.PI * 2)
+              ctx.fill()
+            }
+          }
+          ctx.globalAlpha = 1.0
+        }
+        if (now - landStartTime < 1000) {
+           landRaf = requestAnimationFrame(landTick)
+        }
+      }
+      landRaf = requestAnimationFrame(landTick)
+      
+      // Impact freeze flash
       if (landingFlashRef.current) {
         const flashOpacity = grade === 'crash' ? 0.2 : grade === 'telemark' ? 0.15 : 0.1
         landingFlashRef.current.style.opacity = String(flashOpacity)
@@ -814,6 +786,7 @@ export default function AISkiJumpGame() {
       setTimeout(() => {
         playSound('tick')
         setScreen('SCORE_DISPLAY')
+        cancelAnimationFrame(landRaf)
       }, 550)
     },
     [currentRound, currentWind, spawnSnowBurst, applyCameraShake],
@@ -829,7 +802,7 @@ export default function AISkiJumpGame() {
         finishGame()
       } else {
         setCurrentRound(nextRound)
-        clearTrail()
+        particlesRef.current = [] // clear particles
         generateWind()
         setScreen('ROUND_INTRO')
       }
@@ -878,7 +851,7 @@ export default function AISkiJumpGame() {
 
   // ---- Play again ----
   const handlePlayAgain = useCallback(() => {
-    clearTrail()
+    particlesRef.current = []
     flightStateRef.current = null
     launchVelRef.current = null
     setFlightProgress(0)
@@ -886,7 +859,7 @@ export default function AISkiJumpGame() {
     setJumperPos({ x: RAMP_TOP.x, y: RAMP_TOP.y })
     resetCameraInstant()
     setScreen('TITLE')
-  }, [clearTrail, resetCameraInstant])
+  }, [resetCameraInstant])
 
   // ---- Share / Challenge handlers ----
   const handleShare = useCallback((text) => {
@@ -1024,7 +997,6 @@ export default function AISkiJumpGame() {
       {/* SCORE BADGES — previous rounds                                    */}
       {/* ================================================================= */}
       {scores.length > 0 && (() => {
-        // Compute running best-3 total
         const sortedDists = [...scores].map(s => s.distance).sort((a, b) => b - a)
         const bestN = sortedDists.slice(0, BEST_N)
         const runningTotal = Math.round(bestN.reduce((sum, d) => sum + d, 0) * 10) / 10
@@ -1060,7 +1032,6 @@ export default function AISkiJumpGame() {
                 {s.distance.toFixed(1)}m
               </div>
             ))}
-            {/* Running best-3 total */}
             {scores.length >= 2 && (
               <div style={{
                 padding: `${Math.round(3 * Math.max(scale, 0.65))}px ${Math.round(10 * Math.max(scale, 0.65))}px`,
@@ -1083,7 +1054,6 @@ export default function AISkiJumpGame() {
       {/* GAME CONTAINER — scaled game area with overflow hidden            */}
       {/* ================================================================= */}
       <div ref={gameContainerRef} style={{ ...containerStyle, overflow: 'hidden' }} data-game-container>
-        {/* Shake wrapper — prevents camera shake from clobbering scale transform */}
         <div ref={shakeWrapperRef} style={{ position: 'absolute', inset: 0 }}>
 
           {/* ============================================================= */}
@@ -1100,7 +1070,23 @@ export default function AISkiJumpGame() {
             }}
           >
             <SkiJumpScene>
-              {/* ---- JUMPER (SVG ski jumper with pose states) ---- */}
+              {/* ---- CANVAS FOR PARTICLES ---- */}
+              <canvas
+                ref={canvasRef}
+                width={SCENE_W}
+                height={GAME_H}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  pointerEvents: 'none',
+                  zIndex: 3,
+                }}
+              />
+
+              {/* ---- JUMPER (SVG Skier) ---- */}
               {(screen === 'APPROACH' ||
                 screen === 'FLIGHT' ||
                 screen === 'LANDING') && (
@@ -1125,23 +1111,18 @@ export default function AISkiJumpGame() {
                       height: '100%',
                       transformOrigin: 'center center',
                       transition: 'transform 0.15s ease-out',
-                      filter: `drop-shadow(0 2px 6px rgba(0,0,0,0.6)) drop-shadow(0 0 12px ${jumper.color}66)`,
+                      filter: `drop-shadow(0 2px 6px rgba(0,0,0,0.6))`,
                     }}
                   >
                     <div style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: '50%',
-                      background: jumper.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 24,
+                      fontSize: '42px',
+                      lineHeight: 1,
+                      textAlign: 'center',
                     }}>
                       {jumper.emoji}
                     </div>
                   </div>
-                  {/* Telemark landing indicator */}
+                  {/* Telemark indicator */}
                   <div
                     ref={telemarkVRef}
                     style={{
@@ -1176,21 +1157,7 @@ export default function AISkiJumpGame() {
                 </div>
               )}
 
-              {/* ---- TRAIL CONTAINER ---- */}
-              <div
-                ref={trailRef}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  pointerEvents: 'none',
-                  zIndex: 3,
-                }}
-              />
-
-              {/* ---- LAUNCH TIMER (inside scrolling layer) ---- */}
+              {/* ---- LAUNCH TIMER ---- */}
               <LaunchTimer
                 active={screen === 'APPROACH'}
                 onLaunch={handleLaunch}
@@ -1198,11 +1165,12 @@ export default function AISkiJumpGame() {
                 inputLockedUntilRef={inputLockedUntilRef}
               />
 
-              {/* ---- LANDING TIMER (inside scrolling layer) ---- */}
+              {/* ---- LANDING TIMER ---- */}
               <LandingTimer
                 active={screen === 'FLIGHT'}
                 flightProgress={flightProgress}
                 onLand={handleLand}
+                onBoost={handleBoost}
                 jumperPos={jumperPos}
                 gameScale={1}
                 inputLockedUntilRef={inputLockedUntilRef}
@@ -1211,7 +1179,7 @@ export default function AISkiJumpGame() {
           </div>
 
           {/* ============================================================= */}
-          {/* FIXED HUD LAYER — stays in viewport                          */}
+          {/* FIXED HUD LAYER                                              */}
           {/* ============================================================= */}
 
           {/* Wind indicator */}
@@ -1242,7 +1210,41 @@ export default function AISkiJumpGame() {
             </div>
           )}
 
-          {/* Live distance counter — display font */}
+          {/* Boost meter dots */}
+          {screen === 'FLIGHT' && flightProgress < 0.5 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                display: 'flex',
+                gap: 4,
+                zIndex: 20,
+                padding: '3px 8px',
+                borderRadius: 8,
+                background: 'rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(4px)',
+              }}
+            >
+              {Array.from({ length: MAX_BOOSTS }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: i < boostCount ? BRAND.gray : BRAND.orange,
+                    border: `1.5px solid ${i < boostCount ? BRAND.gray : BRAND.orange}`,
+                    opacity: i < boostCount ? 0.3 : 1,
+                    transition: 'all 0.15s ease',
+                    boxShadow: i < boostCount ? 'none' : `0 0 6px ${BRAND.orange}66`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Live distance counter */}
           {screen === 'FLIGHT' && (
             <div
               ref={liveDistRef}
@@ -1266,87 +1268,7 @@ export default function AISkiJumpGame() {
           )}
 
           {/* ============================================================= */}
-          {/* AERO BOOST indicator — during early flight                    */}
-          {/* ============================================================= */}
-          {screen === 'FLIGHT' && flightProgress < 0.5 && (
-            <>
-              {/* "TAP TO BOOST" prompt */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 24,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  color: BRAND.blueLight,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  fontFamily: FONT,
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  zIndex: 20,
-                  pointerEvents: 'none',
-                  textShadow: `0 2px 8px rgba(0,0,0,0.6), 0 0 20px ${BRAND.blue}44`,
-                  animation: 'tapPulse 0.8s ease-in-out infinite',
-                }}
-              >
-                TAP TO BOOST AERO
-              </div>
-
-              {/* Boost meter dots */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 50,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  gap: 8,
-                  zIndex: 20,
-                  pointerEvents: 'none',
-                }}
-              >
-                {Array.from({ length: MAX_BOOSTS }).map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: '50%',
-                      background: i < boostCount ? BRAND.blueLight : 'rgba(255,255,255,0.2)',
-                      border: `2px solid ${i < boostCount ? BRAND.blue : 'rgba(255,255,255,0.3)'}`,
-                      boxShadow: i < boostCount ? `0 0 8px ${BRAND.blue}88` : 'none',
-                      transition: 'all 0.15s ease-out',
-                    }}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Boost flash text (shows on each tap) */}
-          <div
-            ref={boostFlashRef}
-            style={{
-              position: 'absolute',
-              bottom: 80,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              color: BRAND.blueLight,
-              fontSize: 20,
-              fontWeight: 800,
-              fontFamily: DISPLAY_FONT,
-              letterSpacing: '2px',
-              zIndex: 25,
-              pointerEvents: 'none',
-              opacity: 0,
-              textShadow: `0 0 16px ${BRAND.blue}88`,
-            }}
-          >
-            BOOST!
-          </div>
-
-          {/* ============================================================= */}
-          {/* LANDING FLASH — brief white flash on impact                   */}
+          {/* LANDING FLASH                                                 */}
           {/* ============================================================= */}
           <div
             ref={landingFlashRef}
@@ -1362,7 +1284,7 @@ export default function AISkiJumpGame() {
           />
 
           {/* ============================================================= */}
-          {/* OVERLAY LAYER — fullscreen overlays                           */}
+          {/* OVERLAY LAYER                                                 */}
           {/* ============================================================= */}
 
           {/* Tutorial */}

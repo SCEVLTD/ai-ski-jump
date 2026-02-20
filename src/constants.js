@@ -52,6 +52,9 @@ export const GRAVITY = 9.81
 export const AIR_RESISTANCE = 0.015
 export const RAMP_HEIGHT = 260 // vertical drop of ramp in game units (RAMP_TOP.y to RAMP_LIP.y)
 export const MAX_DISTANCE = 200 // theoretical max in metres
+export const MAX_BOOSTS = 3 // Number of mid-air boosts allowed
+export const BOOST_VX = 14 // Horizontal speed added per boost
+export const BOOST_VY = 3.0 // Vertical lift (reduction in downward speed) per boost
 
 // ---------------------------------------------------------------------------
 // Timing windows (milliseconds from optimal moment)

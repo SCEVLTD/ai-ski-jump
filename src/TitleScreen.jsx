@@ -5,11 +5,11 @@ import SkiJumpScene from './SkiJumpScene'
 const FONT = "'Open Sans','Segoe UI',system-ui,sans-serif"
 const DISPLAY_FONT = "'Barlow Condensed','Open Sans',system-ui,sans-serif"
 
-// Generate snowflakes once (static array) — denser, varied
+// Generate snowflakes once (static array)
 const SNOWFLAKES = Array.from({ length: 28 }, (_, i) => ({
   id: i,
   left: `${Math.random() * 100}%`,
-  size: 2 + Math.random() * 4, // 2px to 6px
+  size: 2 + Math.random() * 4,
   duration: 6 + Math.random() * 8,
   delay: Math.random() * 12,
   opacity: 0.15 + Math.random() * 0.55,
@@ -26,7 +26,6 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  // Spacebar to start on desktop
   useEffect(() => {
     if (!isDesktop) return
     const handler = (e) => {
@@ -55,9 +54,7 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
       padding: '24px',
       boxSizing: 'border-box',
     }}>
-      {/* ============================================================= */}
-      {/* BACKGROUND: SkiJumpScene rendered dimmed                       */}
-      {/* ============================================================= */}
+      {/* Background SkiJumpScene dimmed */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -79,7 +76,6 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
         </div>
       </div>
 
-      {/* Dark overlay gradient on top of scene for readability */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -87,46 +83,7 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
         pointerEvents: 'none',
       }} />
 
-      {/* ============================================================= */}
-      {/* FLOODLIGHT GLOW EFFECTS                                       */}
-      {/* ============================================================= */}
-      <div className="title-floodlight" style={{
-        position: 'absolute',
-        top: '5%',
-        left: '20%',
-        width: '200px',
-        height: '200px',
-        borderRadius: '50%',
-        background: `radial-gradient(circle, ${BRAND.blue}22 0%, ${BRAND.blue}08 40%, transparent 70%)`,
-        pointerEvents: 'none',
-        animation: 'floodlightPulse 4s ease-in-out infinite',
-      }} />
-      <div className="title-floodlight" style={{
-        position: 'absolute',
-        top: '10%',
-        right: '15%',
-        width: '160px',
-        height: '160px',
-        borderRadius: '50%',
-        background: `radial-gradient(circle, #FCD34D18 0%, #FCD34D06 40%, transparent 70%)`,
-        pointerEvents: 'none',
-        animation: 'floodlightPulse 5s ease-in-out 1s infinite',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: '0',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '400px',
-        height: '300px',
-        borderRadius: '50%',
-        background: `radial-gradient(ellipse, ${BRAND.purple}12 0%, transparent 60%)`,
-        pointerEvents: 'none',
-      }} />
-
-      {/* ============================================================= */}
-      {/* SNOWFALL                                                       */}
-      {/* ============================================================= */}
+      {/* Snowfall */}
       {SNOWFLAKES.map((s) => (
         <div key={s.id} style={{
           position: 'absolute',
@@ -143,9 +100,7 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
         }} />
       ))}
 
-      {/* ============================================================= */}
-      {/* CONTENT CONTAINER                                              */}
-      {/* ============================================================= */}
+      {/* Content Container */}
       <div style={{
         maxWidth: '480px',
         width: '100%',
@@ -168,7 +123,7 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
           BRANDEDAI
         </div>
 
-        {/* Title — larger, bolder, more vibrant gradient */}
+        {/* Title */}
         <h1 style={{
           fontSize: 'clamp(2.5rem, 8vw, 4rem)',
           fontWeight: 900,
@@ -214,43 +169,31 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
           fontWeight: 600,
           color: BRAND.blueLight,
           letterSpacing: '1px',
-          marginBottom: '24px',
+          marginBottom: '20px',
         }}>
           Winter Olympics 2026 Edition
         </div>
 
-        {/* Ski jumper SVG — 2x larger centrepiece */}
+        {/* Skier Character Centerpiece */}
         <div style={{
           animation: 'float 3s ease-in-out infinite, fadeUp 0.6s ease-out 0.25s both',
           marginBottom: '20px',
           filter: `drop-shadow(0 6px 30px ${BRAND.blue}55)`,
         }}>
           <svg width="160" height="120" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Glow halo behind jumper */}
             <ellipse cx="80" cy="60" rx="70" ry="40" fill={`${BRAND.blue}10`} />
-            {/* Head */}
             <circle cx="36" cy="28" r="10" fill={BRAND.blueLight} />
-            {/* Helmet visor */}
             <path d="M30 26 Q36 22 42 26" stroke={BRAND.blue} strokeWidth="2" fill="none" opacity="0.6" />
-            {/* Body — leaning forward in flight */}
             <line x1="44" y1="32" x2="100" y2="52" stroke={BRAND.blueLight} strokeWidth="5" strokeLinecap="round" />
-            {/* Front arm — forward */}
             <line x1="64" y1="40" x2="48" y2="20" stroke={BRAND.blueLight} strokeWidth="4" strokeLinecap="round" />
-            {/* Back arm — along body */}
             <line x1="76" y1="44" x2="96" y2="32" stroke={BRAND.blueLight} strokeWidth="4" strokeLinecap="round" />
-            {/* Front leg — V-style */}
             <line x1="100" y1="52" x2="136" y2="76" stroke={BRAND.blueLight} strokeWidth="5" strokeLinecap="round" />
-            {/* Back leg — V-style */}
             <line x1="100" y1="52" x2="132" y2="88" stroke={BRAND.blueLight} strokeWidth="5" strokeLinecap="round" />
-            {/* Front ski */}
             <line x1="128" y1="72" x2="156" y2="68" stroke={BRAND.white} strokeWidth="4" strokeLinecap="round" />
-            {/* Back ski */}
             <line x1="124" y1="84" x2="152" y2="92" stroke={BRAND.white} strokeWidth="4" strokeLinecap="round" />
-            {/* Wind lines */}
             <line x1="2" y1="38" x2="22" y2="34" stroke={BRAND.blue} strokeWidth="2.5" strokeLinecap="round" opacity="0.5" />
             <line x1="6" y1="54" x2="26" y2="50" stroke={BRAND.blue} strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
             <line x1="10" y1="70" x2="30" y2="66" stroke={BRAND.blue} strokeWidth="2.5" strokeLinecap="round" opacity="0.3" />
-            <line x1="0" y1="46" x2="16" y2="43" stroke={BRAND.purple} strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
           </svg>
         </div>
 
@@ -297,10 +240,10 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
           marginBottom: '16px',
           lineHeight: 1.6,
         }}>
-          5 jumps &bull; Best 3 count &bull; Launch, boost, land!
+          5 jumps &bull; Best 3 count &bull; Launch, boost mid-air, land
         </div>
 
-        {/* Best score + next goal — compact single line */}
+        {/* Best score */}
         {bestScore != null && bestScore > 0 ? (() => {
           const nextTier = [...GRADE_TIERS].reverse().find(t => t.min > bestScore)
           return (
@@ -331,20 +274,7 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
           )
         })() : null}
 
-        {/* Games played */}
-        {gamesPlayed > 0 && (
-          <div style={{
-            animation: 'fadeUp 0.6s ease-out 0.5s both',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: BRAND.gray,
-            marginBottom: '12px',
-          }}>
-            Games played: {gamesPlayed}
-          </div>
-        )}
-
-        {/* Start button — stronger pulse */}
+        {/* Start button */}
         <button
           onClick={onStart}
           className="title-start-btn"
@@ -364,13 +294,11 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
             fontFamily: FONT,
             marginTop: '8px',
             marginBottom: '12px',
-            position: 'relative',
           }}
         >
           START JUMPING
         </button>
 
-        {/* Desktop hint — only on desktop */}
         {isDesktop && (
           <div style={{
             animation: 'fadeUp 0.6s ease-out 0.65s both',
@@ -381,47 +309,6 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
             Press SPACE to jump
           </div>
         )}
-
-        {/* Grade tier ladder — below CTA so button stays above fold */}
-        <div style={{
-          animation: 'fadeUp 0.6s ease-out 0.7s both',
-          width: '100%',
-          maxWidth: '300px',
-          marginTop: '16px',
-          marginBottom: '8px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '3px',
-        }}>
-          {GRADE_TIERS.slice(0, 5).map((tier) => {
-            const reached = bestScore != null && bestScore >= tier.min
-            return (
-              <div key={tier.label} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '3px 10px',
-                borderRadius: '6px',
-                background: reached ? `${BRAND.blue}18` : 'transparent',
-                opacity: reached ? 1 : 0.45,
-              }}>
-                <span style={{ fontSize: '14px', minWidth: '20px' }}>{tier.emoji}</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: reached ? 700 : 500,
-                  color: reached ? BRAND.white : BRAND.grayLight,
-                  flex: 1,
-                }}>{tier.label}</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: BRAND.gray,
-                  fontFamily: DISPLAY_FONT,
-                }}>{tier.min}m+</span>
-              </div>
-            )
-          })}
-        </div>
 
         {/* Footer */}
         <div style={{

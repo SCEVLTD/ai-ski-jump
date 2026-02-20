@@ -8,10 +8,10 @@ const DISPLAY_FONT = "'Barlow Condensed','Open Sans',system-ui,sans-serif"
 // Landing grade display config
 // ---------------------------------------------------------------------------
 const LANDING_DISPLAY = {
-  telemark: { icon: "\u2708\uFE0F", label: "Telemark!", color: BRAND.green },
-  clean:    { icon: "\uD83C\uDFBF", label: "Clean",     color: BRAND.blue },
-  shaky:    { icon: "\uD83D\uDE2C", label: "Shaky",     color: BRAND.orange },
-  crash:    { icon: "\uD83D\uDCA5", label: "Crash!",    color: BRAND.red },
+  telemark: { icon: "🏆", label: "Telemark!", color: BRAND.green },
+  clean:    { icon: "🎿", label: "Clean",     color: BRAND.blue },
+  shaky:    { icon: "😬", label: "Shaky",     color: BRAND.orange },
+  crash:    { icon: "💥", label: "Crash!",    color: BRAND.red },
 }
 
 // ---------------------------------------------------------------------------
@@ -24,18 +24,18 @@ export function generateShareText(scores, totalScore, grade) {
   })
 
   const countedStars = scores.filter((s) => s.counted).length
-  const starLine = "\u2B50".repeat(countedStars) + "\u2606".repeat(ROUNDS_PER_GAME - countedStars)
+  const starLine = "⭐".repeat(countedStars) + "☆".repeat(ROUNDS_PER_GAME - countedStars)
 
   return [
-    "\uD83C\uDFBF AI Ski Jump Championship",
+    "🎿 AI Ski Jump Championship",
     "",
     ...lines,
     "",
-    `Total: ${totalScore.toFixed(1)}m \u2014 ${grade.label} ${grade.emoji}`,
+    `Total: ${totalScore.toFixed(1)}m — ${grade.label} ${grade.emoji}`,
     `Best 3: ${starLine}`,
     "",
     "Can you beat my distance?",
-    "\uD83D\uDD17 skijump.brandedai.net",
+    "🔗 skijump.brandedai.net",
   ].join("\n")
 }
 
@@ -195,7 +195,7 @@ export default function ResultsScreen({
                   minWidth: '28px',
                   textAlign: 'center',
                 }}>
-                  {s.jumper?.emoji || "\uD83C\uDFBF"}
+                  {s.jumper?.emoji || "🏂"}
                 </div>
 
                 {/* Jumper name + round */}
@@ -248,7 +248,7 @@ export default function ResultsScreen({
                   minWidth: '20px',
                   textAlign: 'center',
                 }}>
-                  {counted ? "\u2B50" : ""}
+                  {counted ? "⭐" : ""}
                 </div>
               </div>
             )

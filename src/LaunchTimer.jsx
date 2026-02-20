@@ -169,9 +169,19 @@ export default function LaunchTimer({ active, onLaunch, gameScale, inputLockedUn
     if (!active) return
 
     function handleInput(e) {
-      // Prevent default for spacebar to avoid page scroll
-      if (e.type === 'keydown' && e.code !== 'Space') return
-      if (e.type === 'keydown') e.preventDefault()
+      const isSpace = e.type === 'keydown' && e.code === 'Space'
+      const isArrow = e.type === 'keydown' && e.code.startsWith('Arrow')
+      const isPointer = e.type === 'pointerdown'
+
+      // We only care about Space, Arrows, or Pointer taps
+      if (!isSpace && !isArrow && !isPointer) return
+      
+      // Prevent default scrolling for arrows and space
+      if (e.type === 'keydown') {
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+          e.preventDefault()
+        }
+      }
 
       // Respect input lockout from state transitions
       if (inputLockedUntilRef && inputLockedUntilRef.current > performance.now()) return

@@ -325,11 +325,10 @@ export default function SkiJumpScene({ children }) {
           const slopeY = (x) => lipY + (x - lipX) * LANDING_HILL_SLOPE
 
           // --- Curved surface line (visual) ---
-          // Starts steeper near the lip and gradually flattens.
-          // Uses a quadratic bezier that closely follows the linear physics slope.
-          const midX = lipX + (endX - lipX) * 0.35
-          const midY = slopeY(midX) - 8 // slightly above linear for steeper start
-          const surfaceCurve = `M ${lipX},${lipY} Q ${midX},${midY + 12} ${endX - 10},${slopeY(endX - 10)}`
+          // Gentle convex curve: steeper near lip, flattening toward outrun
+          const cpx = lipX + (endX - lipX) * 0.4
+          const cpy = lipY + (cpx - lipX) * LANDING_HILL_SLOPE - 15
+          const surfaceCurve = `M ${lipX},${lipY} Q ${cpx},${cpy} ${endX},${endY}`
 
           // --- Hill body ---
           const bulgeDepth = 65
@@ -345,8 +344,8 @@ export default function SkiJumpScene({ children }) {
 
           const hillBodyPath = `
             M ${lipX},${lipY}
-            L ${endX},${endY}
-            Q ${endX + 3},${endY + 8} ${underEndX},${underEndY}
+            Q ${cpx},${cpy} ${endX},${endY}
+            L ${underEndX},${underEndY}
             C ${ucp2x},${ucp2y} ${ucp1x},${ucp1y} ${underLipX},${underLipY}
             Q ${lipX - 8},${lipY + 8} ${lipX},${lipY}
             Z
@@ -392,7 +391,7 @@ export default function SkiJumpScene({ children }) {
 
               {/* Depth shadow below surface */}
               <path
-                d={`M ${lipX + 2},${lipY + 4} Q ${midX},${midY + 16} ${endX - 15},${slopeY(endX - 15) + 4}`}
+                d={`M ${lipX + 2},${lipY + 4} Q ${cpx},${cpy + 4} ${endX - 15},${slopeY(endX - 15) + 4}`}
                 fill="none" stroke="#8B9EB0" strokeWidth="1.5" opacity="0.35"
               />
 
@@ -559,6 +558,18 @@ export default function SkiJumpScene({ children }) {
         <line x1={100} y1={GAME_H - 30} x2={SCENE_W - 60} y2={GAME_H - 30}
           stroke="#475569" strokeWidth="1" opacity="0.5"
         />
+
+        {/* ============================================================= */}
+        {/* BANNERS (BrandedAI Sponsors)                                  */}
+        {/* ============================================================= */}
+        {[140, 240, 360, 480, 600].map((bx, i) => (
+          <g key={`banner-${i}`}>
+            <rect x={bx} y={GAME_H - 35} width={46} height={10} fill={BRAND.blueDark} rx={1} opacity="0.9" />
+            <text x={bx + 23} y={GAME_H - 28} fill={BRAND.white} fontSize="5" fontFamily="'Open Sans', sans-serif" fontWeight="800" textAnchor="middle" letterSpacing="0.5px">
+              BRANDED AI
+            </text>
+          </g>
+        ))}
 
         {/* ============================================================= */}
         {/* RAMP TOP PLATFORM (starting gate area)                        */}

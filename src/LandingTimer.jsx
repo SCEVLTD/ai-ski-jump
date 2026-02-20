@@ -109,6 +109,7 @@ export default function LandingTimer({
   active,
   flightProgress,
   onLand,
+  onBoost,
   jumperPos,
   gameScale,
   inputLockedUntilRef,
@@ -201,14 +202,35 @@ export default function LandingTimer({
     if (!active) return
 
     function handleInput(e) {
-      if (e.type === 'keydown' && e.code !== 'Space') return
-      if (e.type === 'keydown') e.preventDefault()
+      const isSpace = e.type === 'keydown' && e.code === 'Space'
+      const isArrow = e.type === 'keydown' && e.code.startsWith('Arrow')
+      const isPointer = e.type === 'pointerdown'
+
+      // We only care about Space, Arrows, or Pointer taps
+      if (!isSpace && !isArrow && !isPointer) return
+      
+      // Prevent default scrolling for arrows and space
+      if (e.type === 'keydown') {
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+          e.preventDefault()
+        }
+      }
 
       // Respect input lockout from state transitions
       if (inputLockedUntilRef && inputLockedUntilRef.current > performance.now()) return
 
-      // Don't accept landing taps during early flight (boost phase)
-      if (flightProgressRef.current < 0.5) return
+      const fp = flightProgressRef.current
+
+      // Phase 1: Boost Zone (fp < 0.5)
+      // Accept Arrow keys, Space, or Taps
+      if (fp < 0.5) {
+        if (onBoost) onBoost()
+        return
+      }
+
+      // Phase 2: Landing Zone (fp >= 0.5)
+      // Allow Space and Taps. Ignore Arrow keys to prevent accidental landing if they are mashing.
+      if (isArrow) return 
 
       if (!landedRef.current) {
         doLand()
@@ -222,7 +244,7 @@ export default function LandingTimer({
       window.removeEventListener('keydown', handleInput)
       window.removeEventListener('pointerdown', handleInput)
     }
-  }, [active, doLand])
+  }, [active, doLand, onBoost])
 
   // ---- Don't render anything when not active and no feedback ----
   if (!active && !feedback) return null
@@ -244,6 +266,7 @@ export default function LandingTimer({
 
   // "TAP TO LAND" prompt
   const showPrompt = active && !landed && fp > 0.5
+  const showBoostPrompt = active && !landed && fp < 0.5
   // Urgency scaling: gets bigger/brighter as fp increases
   const urgency = Math.min((fp - 0.5) / 0.45, 1) // 0 at fp=0.5, 1 at fp=0.95
   const promptScale = 1 + urgency * 0.4
@@ -327,6 +350,29 @@ export default function LandingTimer({
           }}
         >
           TAP TO LAND
+        </div>
+      )}
+
+      {showBoostPrompt && (
+        <div
+          style={{
+            position: 'absolute',
+            left: jx,
+            top: jy + 30 * scale,
+            transform: `translate(-50%, 0)`,
+            color: BRAND.orange,
+            fontSize: 10 * scale,
+            fontFamily: "'Open Sans', sans-serif",
+            fontWeight: 700,
+            opacity: 0.8,
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+            animation: 'tapPulse 0.5s ease-in-out infinite alternate',
+            textShadow: `0 1px 6px rgba(0,0,0,0.7)`,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          TAP TO BOOST!
         </div>
       )}
 
