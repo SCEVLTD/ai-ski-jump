@@ -207,6 +207,9 @@ export default function LandingTimer({
       // Respect input lockout from state transitions
       if (inputLockedUntilRef && inputLockedUntilRef.current > performance.now()) return
 
+      // Don't accept landing taps during early flight (boost phase)
+      if (flightProgressRef.current < 0.5) return
+
       if (!landedRef.current) {
         doLand()
       }

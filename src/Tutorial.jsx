@@ -113,6 +113,8 @@ export default function Tutorial({ onDismiss, gameScale }) {
         }}>
           Tap to Launch.
           <br />
+          Tap to Boost.
+          <br />
           Tap to Land.
         </div>
 
@@ -137,7 +139,7 @@ export default function Tutorial({ onDismiss, gameScale }) {
           marginBottom: 28 * scale,
           animation: 'tutorialFadeUp 0.4s ease-out 0.15s both',
         }}>
-          Time your taps for maximum distance!
+          Boost in-flight, then time your landing!
         </div>
 
         {/* Animated diagram */}

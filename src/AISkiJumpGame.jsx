@@ -63,6 +63,10 @@ const CAMERA_FOLLOW_X = GAME_W * 0.35 // jumper kept at 35% from left
 const CAMERA_MAX_X = SCENE_W - GAME_W  // max pan (400px)
 const CAMERA_LERP = 0.12               // smooth follow speed
 
+// In-flight aero boost
+const MAX_BOOSTS = 4
+const BOOST_VX = 14 // px/s added per tap
+
 const LANDING_BADGE_BG = {
   telemark: BRAND.green,
   clean: BRAND.blue,
@@ -158,6 +162,9 @@ export default function AISkiJumpGame() {
   const gameContainerRef = useRef(null)
   const landingFlashRef = useRef(null)
   const lastMilestoneRef = useRef(0)
+  const boostCountRef = useRef(0)
+  const [boostCount, setBoostCount] = useState(0)
+  const boostFlashRef = useRef(null)
 
   // Camera tracking refs
   const scrollLayerRef = useRef(null)
@@ -524,6 +531,8 @@ export default function AISkiJumpGame() {
       frameCountRef.current = 0
       lastTimeRef.current = performance.now()
       lastMilestoneRef.current = 0
+      boostCountRef.current = 0
+      setBoostCount(0)
 
       const ws = playSound('wind')
       windSoundRef.current = ws
@@ -644,6 +653,73 @@ export default function AISkiJumpGame() {
 
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+    }
+  }, [screen])
+
+  // ---- In-flight AERO BOOST — tapping during early flight adds velocity ----
+  useEffect(() => {
+    if (screen !== 'FLIGHT') return
+
+    function handleBoostInput(e) {
+      if (e.type === 'keydown' && e.code !== 'Space') return
+      if (e.type === 'keydown') e.preventDefault()
+
+      // Only accept boosts during early flight (before landing zone)
+      const fp = flightStateRef.current
+        ? flightStateRef.current.flightTime / flightTotalTimeEstRef.current
+        : 0
+      if (fp >= 0.5) return // landing zone — let LandingTimer handle it
+      if (boostCountRef.current >= MAX_BOOSTS) return
+      if (inputLockedUntilRef.current > performance.now()) return
+
+      // Apply velocity boost
+      if (flightStateRef.current) {
+        flightStateRef.current.vx += BOOST_VX
+        // Tiny upward lift too (20% of horizontal boost)
+        flightStateRef.current.vy -= BOOST_VX * 0.2
+      }
+
+      boostCountRef.current++
+      setBoostCount(boostCountRef.current)
+
+      playSound('tick')
+      vibrate([15])
+
+      // Visual: pulse the jumper
+      if (jumperBodyRef.current) {
+        jumperBodyRef.current.style.transition = 'none'
+        jumperBodyRef.current.style.transform = 'scaleX(1.5) scaleY(0.7)'
+        requestAnimationFrame(() => {
+          if (jumperBodyRef.current) {
+            jumperBodyRef.current.style.transition = 'transform 0.2s ease-out'
+            jumperBodyRef.current.style.transform = 'scaleX(1.3) scaleY(0.8)'
+          }
+        })
+      }
+
+      // Visual: flash boost text
+      if (boostFlashRef.current) {
+        boostFlashRef.current.style.opacity = '1'
+        boostFlashRef.current.style.transform = 'translateX(-50%) scale(1.3)'
+        requestAnimationFrame(() => {
+          if (boostFlashRef.current) {
+            boostFlashRef.current.style.transition = 'opacity 0.4s ease-out, transform 0.4s ease-out'
+            boostFlashRef.current.style.opacity = '0'
+            boostFlashRef.current.style.transform = 'translateX(-50%) scale(1)'
+          }
+        })
+      }
+
+      // Brief input cooldown to prevent mashing
+      inputLockedUntilRef.current = performance.now() + 180
+    }
+
+    window.addEventListener('keydown', handleBoostInput)
+    window.addEventListener('pointerdown', handleBoostInput)
+
+    return () => {
+      window.removeEventListener('keydown', handleBoostInput)
+      window.removeEventListener('pointerdown', handleBoostInput)
     }
   }, [screen])
 
@@ -1188,6 +1264,86 @@ export default function AISkiJumpGame() {
               0.0m
             </div>
           )}
+
+          {/* ============================================================= */}
+          {/* AERO BOOST indicator — during early flight                    */}
+          {/* ============================================================= */}
+          {screen === 'FLIGHT' && flightProgress < 0.5 && (
+            <>
+              {/* "TAP TO BOOST" prompt */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 24,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  color: BRAND.blueLight,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  fontFamily: FONT,
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase',
+                  zIndex: 20,
+                  pointerEvents: 'none',
+                  textShadow: `0 2px 8px rgba(0,0,0,0.6), 0 0 20px ${BRAND.blue}44`,
+                  animation: 'tapPulse 0.8s ease-in-out infinite',
+                }}
+              >
+                TAP TO BOOST AERO
+              </div>
+
+              {/* Boost meter dots */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 50,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  gap: 8,
+                  zIndex: 20,
+                  pointerEvents: 'none',
+                }}
+              >
+                {Array.from({ length: MAX_BOOSTS }).map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      background: i < boostCount ? BRAND.blueLight : 'rgba(255,255,255,0.2)',
+                      border: `2px solid ${i < boostCount ? BRAND.blue : 'rgba(255,255,255,0.3)'}`,
+                      boxShadow: i < boostCount ? `0 0 8px ${BRAND.blue}88` : 'none',
+                      transition: 'all 0.15s ease-out',
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Boost flash text (shows on each tap) */}
+          <div
+            ref={boostFlashRef}
+            style={{
+              position: 'absolute',
+              bottom: 80,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              color: BRAND.blueLight,
+              fontSize: 20,
+              fontWeight: 800,
+              fontFamily: DISPLAY_FONT,
+              letterSpacing: '2px',
+              zIndex: 25,
+              pointerEvents: 'none',
+              opacity: 0,
+              textShadow: `0 0 16px ${BRAND.blue}88`,
+            }}
+          >
+            BOOST!
+          </div>
 
           {/* ============================================================= */}
           {/* LANDING FLASH — brief white flash on impact                   */}

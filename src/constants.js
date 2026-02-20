@@ -77,10 +77,10 @@ export const LAUNCH_ANGLES = {
 // Speed multipliers based on timing quality
 // ---------------------------------------------------------------------------
 export const SPEED_MULT = {
-  perfect: 1.15,
-  good: 1.0,
-  ok: 0.82,
-  miss: 0.65,
+  perfect: 1.30,
+  good: 1.05,
+  ok: 0.80,
+  miss: 0.55,
 }
 
 // ---------------------------------------------------------------------------

@@ -297,7 +297,7 @@ export default function TitleScreen({ onStart, bestScore, gamesPlayed, challenge
           marginBottom: '16px',
           lineHeight: 1.6,
         }}>
-          5 jumps &bull; Best 3 count &bull; Tap to launch, tap to land
+          5 jumps &bull; Best 3 count &bull; Launch, boost, land!
         </div>
 
         {/* Best score + next goal — compact single line */}
